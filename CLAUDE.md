@@ -46,23 +46,36 @@ To connect to a live Firebase project:
 ## File Structure
 
 ```
-index.html   – Single-page shell; all sections (upload, filter bar, gallery, modals)
-style.css    – Animated gradient background, glassmorphism cards, responsive grid
-app.js       – All logic: CRUD API routing, gallery render, filter, upload, modals
+index.html          – Minimal shell: header + two mount points (#upload-mount, #gallery-mount)
+style.css           – Animated gradient background, glassmorphism cards, responsive grid
+app.js              – Orchestrator only: instantiates modules, wires api → components (~70 lines)
+manifest.json       – PWA manifest (standalone fullscreen, theme #060a12)
+js/
+  api.js            – Data layer: USE_FIREBASE flag, Firebase CRUD (fb_*), dummy shims (dummy_*)
+  utils.js          – esc(), formatDate(), delay()
+  Modal.js          – Generic promise-based modal class (form or confirm variants)
+  DropZone.js       – Self-contained drag-drop / click-to-browse file picker
+  ImageCard.js      – Pure function: buildCard(rec, callbacks) → HTMLElement
+  Gallery.js        – Filter bar, image grid, lightbox, record state management
+  UploadPanel.js    – Upload form panel; owns a DropZone instance internally
 ```
 
 ## Architecture
 
-`app.js` has a single `USE_FIREBASE` flag that routes all data operations through either the live Firebase functions (`fb_*`) or local dummy shims (`dummy_*`) that mirror the same async API. The `api` object at the module level is the only entry point for data operations — all UI code calls `api.fetchAll()`, `api.create()`, `api.update()`, `api.delete()`.
+`js/api.js` has a single `USE_FIREBASE` flag that routes all data operations through either the live Firebase functions (`fb_*`) or local dummy shims (`dummy_*`). The `api` object is the only export callers use — `api.fetchAll()`, `api.create()`, `api.update()`, `api.delete()`.
 
-State is kept in two module-level variables: `allRecords` (master list, always the full unfiltered set) and `selectedFile` (currently staged upload). `filterRecords()` derives the filtered view from `allRecords` on every render — there is no separate filtered-state variable.
+All UI components are ES module classes/functions. `app.js` instantiates them, passes callbacks, and calls `gallery.setRecords()` after the initial fetch. Components never import `api` directly — data flows in through callbacks and out through methods like `gallery.addRecord()` / `gallery.updateRecord()` / `gallery.removeRecord()`.
 
-Gallery cards are re-rendered from scratch on every `renderGallery()` call. Filter dropdowns are rebuilt from the current `allRecords` set via `rebuildFilterDropdowns()`.
+`Modal.open()` returns a Promise that resolves with field values on confirm or `null` on cancel. The modal stays open after confirm; the caller calls `modal.setLoading(true)`, awaits the async work, then calls `modal.close()` on success or `modal.setStatus()` on error.
+
+`Gallery._filter()` reads directly from filter DOM inputs on every `_render()` call — no duplicated filter-state object.
 
 ## Key Conventions
 
-- All user-supplied strings inserted into `innerHTML` must go through `esc()` (HTML-escapes `& < > " '`)
-- Modals set `document.body.style.overflow = "hidden"` on open and restore it on close
-- Upload, edit, and delete operations each have a dedicated `setUploading()` / `setEditSaving()` / `setDeleting()` helper that toggles button `disabled` state and swaps the text/spinner
-- Dummy records use picsum.photos seeded URLs so layout is testable without real images
-- Date values are stored and compared as ISO strings (`YYYY-MM-DD`); display formatting is done at render time with `toLocaleDateString`
+- All user-supplied strings inserted into `innerHTML` must go through `esc()` from `js/utils.js`
+- `[hidden] { display: none !important; }` is in `style.css` so the HTML `hidden` attribute works correctly on `display:flex` elements (modals, lightbox)
+- Modals and lightbox set `document.body.style.overflow = "hidden"` on open and restore on close
+- Each async operation (`setLoading`) disables its confirm button and swaps text↔spinner
+- Dummy records use picsum.photos seeded URLs so layout is testable without Firebase
+- Date values are stored and compared as ISO strings (`YYYY-MM-DD`); display formatting is done at render time via `formatDate()` in `js/utils.js`
+- PWA icons (`favicon.png`, `icon-192.png`, `icon-512.png`, `apple-touch-icon.png`) must be supplied — `manifest.json` references them but they are not committed

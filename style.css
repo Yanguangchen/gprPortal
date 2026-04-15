@@ -5,6 +5,10 @@
 /* ── Reset & Base ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* Ensure the HTML `hidden` attribute is respected even when an element
+   has an explicit display value (e.g. display:flex on .modal, .lightbox). */
+[hidden] { display: none !important; }
+
 :root {
   --glass-bg:      rgba(10, 14, 26, 0.55);
   --glass-border:  rgba(255, 255, 255, 0.08);
