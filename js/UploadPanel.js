@@ -83,8 +83,7 @@ export class UploadPanel {
       this._reset();
       this._setStatus('Image uploaded successfully.', 'success');
     } catch (err) {
-      console.error(err);
-      this._setStatus('Upload failed. Check console for details.', 'error');
+      this._setStatus(err.message || 'Upload failed. Check console.', 'error');
     } finally {
       this._setLoading(false);
     }

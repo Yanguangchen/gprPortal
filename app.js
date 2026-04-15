@@ -8,9 +8,100 @@ import { api, initFirebase, USE_FIREBASE } from './js/api.js';
 import { Gallery }     from './js/Gallery.js';
 import { UploadPanel } from './js/UploadPanel.js';
 import { Modal }       from './js/Modal.js';
+import { initTheme, renderThemeSwitcher } from './js/theme.js';
+
+// Apply saved theme immediately (before any rendering) to avoid flash
+initTheme();
 
 async function boot() {
+  renderThemeSwitcher(document.getElementById('theme-switcher'));
+
   if (USE_FIREBASE) await initFirebase();
+
+  const userProfileEl = document.getElementById('user-profile');
+
+  // ── Auth modal ─────────────────────────────────────────────────
+  const loginModal = new Modal({
+    title: 'Authentication Required',
+    bodyHTML: `
+      <div class="auth-modal-content">
+        <p class="modal-body">Please sign in with your Google account to access the portal.</p>
+        <button id="google-login-btn" class="btn-primary auth-btn">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="" width="18" height="18" />
+          <span>Sign in with Google</span>
+        </button>
+      </div>
+    `,
+    confirmLabel: 'Close',
+    confirmVariant: 'ghost',
+  });
+
+  // Wire up the login button inside the modal
+  const setupLoginBtn = () => {
+    const btn = document.getElementById('google-login-btn');
+    if (btn) {
+      btn.onclick = async () => {
+        loginModal.setLoading(true);
+        try {
+          await api.login();
+          loginModal.close();
+        } catch (err) {
+          console.error(err);
+          loginModal.setStatus('Login failed. Check console.', 'error');
+        } finally {
+          loginModal.setLoading(false);
+        }
+      };
+    }
+  };
+
+  function renderUserProfile(user) {
+    if (!user) {
+      userProfileEl.innerHTML = `
+        <div class="user-profile">
+          <div class="user-info">
+            <span class="user-name">Guest</span>
+            <span class="user-email">Please sign in to manage scans</span>
+          </div>
+        </div>
+        <div class="auth-card-actions">
+          <button id="header-login-btn" class="btn-primary btn-sm">Sign In</button>
+        </div>
+      `;
+      document.getElementById('header-login-btn').onclick = () => {
+        loginModal.open();
+        setupLoginBtn();
+      };
+      return;
+    }
+
+    const { displayName, email, photoURL } = user;
+    userProfileEl.innerHTML = `
+      <div class="user-profile">
+        <img class="user-avatar" src="${photoURL || 'https://www.gravatar.com/avatar/000?d=mp'}" alt="" />
+        <div class="user-info">
+          <span class="user-name">${displayName || 'User'}</span>
+          <span class="user-email">${email || ''}</span>
+        </div>
+      </div>
+      <div class="auth-card-actions">
+        <button id="header-logout-btn" class="btn-ghost btn-sm">Sign Out</button>
+      </div>
+    `;
+
+    document.getElementById('header-logout-btn').onclick = () => api.logout();
+  }
+
+  // Listen for auth changes
+  api.onAuth(user => {
+    renderUserProfile(user);
+    if (!user) {
+      loginModal.open();
+      setupLoginBtn();
+    } else {
+      loginModal.close();
+    }
+  });
 
   // ── Edit modal ─────────────────────────────────────────────────
   const editModal = new Modal({
@@ -56,8 +147,7 @@ async function boot() {
         gallery.updateRecord(rec.id, fields);
         editModal.close();
       } catch (err) {
-        console.error(err);
-        editModal.setStatus('Save failed. Check console.', 'error');
+        editModal.setStatus(err.message || 'Save failed. Check console.', 'error');
       } finally {
         editModal.setLoading(false);
       }
@@ -73,8 +163,7 @@ async function boot() {
         gallery.removeRecord(rec.id);
         deleteModal.close();
       } catch (err) {
-        console.error(err);
-        deleteModal.setStatus('Delete failed. Check console.', 'error');
+        deleteModal.setStatus(err.message || 'Delete failed. Check console.', 'error');
       } finally {
         deleteModal.setLoading(false);
       }
