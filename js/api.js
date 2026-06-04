@@ -137,15 +137,8 @@ async function fb_delete(id, storagePath) {
 
 // ── Dummy shims ───────────────────────────────────────────────────
 
-let _records = [
-  { id: 'd1', companyName: 'Apex Surveys Ltd.',    projectName: 'Bridge Deck Inspection — I-90',  imageDate: '2024-11-03', imageUrl: 'https://picsum.photos/seed/gpr1/640/400', imageName: 'bridge_deck_scan_01.jpg',  storagePath: null },
-  { id: 'd2', companyName: 'UrbanCore Engineering', projectName: 'Downtown Utility Mapping',        imageDate: '2024-12-18', imageUrl: 'https://picsum.photos/seed/gpr2/640/400', imageName: 'utility_map_core_02.png',  storagePath: null },
-  { id: 'd3', companyName: 'Apex Surveys Ltd.',    projectName: 'Airport Runway Subsurface',       imageDate: '2025-01-07', imageUrl: 'https://picsum.photos/seed/gpr3/640/400', imageName: 'runway_subsurface_03.jpg', storagePath: null },
-  { id: 'd4', companyName: 'TerraScan Inc.',        projectName: 'Highway 101 Rebar Detection',    imageDate: '2025-02-14', imageUrl: 'https://picsum.photos/seed/gpr4/640/400', imageName: 'rebar_hwy101_04.jpg',      storagePath: null },
-  { id: 'd5', companyName: 'UrbanCore Engineering', projectName: 'Sewer Tunnel Assessment',         imageDate: '2025-03-01', imageUrl: 'https://picsum.photos/seed/gpr5/640/400', imageName: 'sewer_tunnel_05.png',      storagePath: null },
-  { id: 'd6', companyName: 'TerraScan Inc.',        projectName: 'Parking Deck Void Survey',       imageDate: '2025-03-22', imageUrl: 'https://picsum.photos/seed/gpr6/640/400', imageName: 'parking_void_06.jpg',      storagePath: null },
-];
-let _nextId = 7;
+let _records = [];
+let _nextId = 1;
 
 async function dummy_fetchAll() { return [..._records]; }
 

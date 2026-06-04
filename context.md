@@ -7,9 +7,9 @@ Living document tracking the current state, decisions, and open questions for th
 ## What This App Does
 
 A construction engineering company uploads Ground Penetrating Radar scan images after each site survey. This portal lets staff:
-- Upload a scan image + tag it with company name, project name, and scan date
+- Upload a scan image + tag it with company name, project name, work site, and scan date
 - Browse all images in a filterable gallery
-- Edit metadata (company/project/date) without re-uploading
+- Edit metadata (company/project/work site/date) without re-uploading
 - Delete records and their associated Storage files
 - Secure access via Google Sign-in for authorized personnel only
 

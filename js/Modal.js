@@ -1,4 +1,5 @@
 import { esc } from './utils.js';
+import { audio } from './audio.js';
 
 /**
  * Reusable dark-glass modal.
@@ -102,6 +103,7 @@ export class Modal {
    * @returns {Promise<Object|true|null>}
    */
   open(initialValues = {}) {
+    audio.action();
     Object.entries(initialValues).forEach(([k, v]) => {
       if (this._inputMap[k]) this._inputMap[k].value = v ?? '';
     });

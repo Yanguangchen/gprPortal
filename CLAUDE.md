@@ -22,7 +22,7 @@ python3 -m http.server 8080
 npx serve .
 ```
 
-Open `http://localhost:8080` in a browser. The app runs on **dummy data** by default (no Firebase needed).
+Open `http://localhost:8080` in a browser. The app runs with Firebase by default. If Firebase is disabled, local records use an empty in-memory store.
 
 ## Firebase Setup
 
@@ -43,6 +43,7 @@ To connect to a live Firebase project:
 |---------------|-----------|------------------------------------|
 | `companyName` | string    |                                    |
 | `projectName` | string    |                                    |
+| `workSite`    | string    | Work site/location text            |
 | `imageDate`   | string    | ISO date `YYYY-MM-DD`              |
 | `imageUrl`    | string    | Firebase Storage download URL      |
 | `imageName`   | string    | Original filename                  |
