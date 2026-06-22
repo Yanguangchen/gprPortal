@@ -1155,7 +1155,9 @@ input::placeholder { color: var(--text-muted); opacity: 0.6; }
   text-overflow: ellipsis;
 }
 
-.card-work-site {
+.card-work-site,
+.card-reference-point-number,
+.card-remarks {
   font-size: 0.78rem;
   color: var(--text-muted);
   white-space: nowrap;
@@ -2140,5 +2142,4 @@ input::placeholder { color: var(--text-muted); opacity: 0.6; }
   .sweep { animation: none; }
   .pulse { animation: none; }
 }
-
 

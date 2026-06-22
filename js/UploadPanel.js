@@ -6,7 +6,7 @@ import { audio }    from './audio.js';
  *
  * Usage:
  *   new UploadPanel(mountEl, {
- *     onUpload: async (file, { companyName, projectName, workSite, imageDate }, onProgress) => {
+ *     onUpload: async (file, { companyName, projectName, workSite, imageDate, referencePointNumber, remarks }, onProgress) => {
  *       const rec = await api.create(file, meta, onProgress);
  *       gallery.addRecord(rec);
  *       return rec;
@@ -93,6 +93,28 @@ export class UploadPanel {
                 </div>
               </div>
 
+              <div class="field">
+                <label for="up-reference-point-number">Reference Point Number</label>
+                <div class="input-wrap">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M4 5h16M4 12h16M4 19h16"/>
+                    <path d="M8 3 6 21M18 3l-2 18"/>
+                  </svg>
+                  <input type="text" id="up-reference-point-number" placeholder="e.g. RP-12A" />
+                </div>
+              </div>
+
+              <div class="field">
+                <label for="up-remarks">Remarks</label>
+                <div class="input-wrap">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M4 5h16v10H7l-3 3z"/>
+                    <path d="M8 9h8M8 12h5"/>
+                  </svg>
+                  <input type="text" id="up-remarks" placeholder="e.g. Near column B2" />
+                </div>
+              </div>
+
             </div>
 
             <div class="submit-area">
@@ -128,6 +150,8 @@ export class UploadPanel {
     this._projectEl  = mountEl.querySelector('#up-project');
     this._workSiteEl = mountEl.querySelector('#up-work-site');
     this._dateEl     = mountEl.querySelector('#up-date');
+    this._referencePointNumberEl = mountEl.querySelector('#up-reference-point-number');
+    this._remarksEl   = mountEl.querySelector('#up-remarks');
     this._submitBtn  = mountEl.querySelector('.js-submit');
     this._submitIc   = mountEl.querySelector('.js-submit-ic');
     this._submitText = mountEl.querySelector('.js-submit-text');
@@ -148,6 +172,8 @@ export class UploadPanel {
     const project  = this._projectEl.value.trim();
     const workSite = this._workSiteEl.value.trim();
     const date     = this._dateEl.value;
+    const referencePointNumber = this._referencePointNumberEl.value.trim();
+    const remarks = this._remarksEl.value.trim();
 
     if (!file)     { this._setStatus('Please select a radar scan file.', 'error'); return; }
     if (!company)  { this._setStatus('Company name is required.', 'error'); this._companyEl.focus(); return; }
@@ -163,7 +189,7 @@ export class UploadPanel {
     try {
       await this._onUpload(
         file,
-        { companyName: company, projectName: project, workSite, imageDate: date },
+        { companyName: company, projectName: project, workSite, imageDate: date, referencePointNumber, remarks },
         pct => this._setProgress(pct),
       );
       this._setProgress(100);
@@ -188,6 +214,8 @@ export class UploadPanel {
     this._projectEl.value  = '';
     this._workSiteEl.value = '';
     this._dateEl.value     = '';
+    this._referencePointNumberEl.value = '';
+    this._remarksEl.value   = '';
   }
 
   _setLoading(on) {

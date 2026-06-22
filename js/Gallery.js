@@ -41,7 +41,7 @@ export class Gallery {
           </div>
           <div class="filter-item filter-search">
             <label>Search</label>
-            <input type="text" class="js-f-search" placeholder="Company, project, work site…" />
+            <input type="text" class="js-f-search" placeholder="Company, project, ref, remarks…" />
           </div>
           <button class="btn-ghost js-f-clear" type="button">Clear</button>
         </div>
@@ -147,7 +147,7 @@ export class Gallery {
       if (dateFrom && r.imageDate < dateFrom)                  return false;
       if (dateTo   && r.imageDate > dateTo)                    return false;
       if (search) {
-        const hay = `${r.companyName} ${r.projectName} ${r.workSite || ''} ${r.imageName}`.toLowerCase();
+        const hay = `${r.companyName} ${r.projectName} ${r.workSite || ''} ${r.referencePointNumber || ''} ${r.remarks || ''} ${r.imageName}`.toLowerCase();
         if (!hay.includes(search)) return false;
       }
       return true;
@@ -191,6 +191,8 @@ export class Gallery {
     this._lb.querySelector('.js-lb-meta').innerHTML =
       `<strong>${esc(rec.companyName)}</strong> · ${esc(rec.projectName)}<br/>` +
       `${esc(rec.workSite || 'No work site specified')}<br/>` +
+      `Reference Point Number: ${esc(rec.referencePointNumber || 'Not specified')}<br/>` +
+      `Remarks: ${esc(rec.remarks || 'None')}<br/>` +
       formatDate(rec.imageDate, { dateStyle: 'long' });
     this._lb.hidden = false;
     document.body.style.overflow = 'hidden';

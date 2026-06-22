@@ -9,6 +9,8 @@ const sample = {
   projectName: 'Site Survey',
   workSite: 'Downtown',
   imageDate: '2024-03-15',
+  referencePointNumber: 'RP-12A',
+  remarks: 'Near column B2',
 };
 
 describe('buildCard', () => {
@@ -26,17 +28,25 @@ describe('buildCard', () => {
     expect(img.getAttribute('alt')).toBe('photo.jpg');
   });
 
-  it('renders company, project, work site, and formatted date', () => {
+  it('renders company, project, work site, reference point number, remarks, and formatted date', () => {
     const card = buildCard(sample);
     expect(card.querySelector('.card-company').textContent).toBe('ACME Corp');
     expect(card.querySelector('.card-project').textContent).toBe('Site Survey');
     expect(card.querySelector('.card-work-site').textContent).toBe('Downtown');
+    expect(card.querySelector('.card-reference-point-number').textContent).toBe('Ref: RP-12A');
+    expect(card.querySelector('.card-remarks').textContent).toBe('Remarks: Near column B2');
     expect(card.querySelector('.card-date').textContent).toMatch(/Mar 15, 2024/);
   });
 
   it('falls back to "No work site specified" when workSite is falsy', () => {
     const card = buildCard({ ...sample, workSite: '' });
     expect(card.querySelector('.card-work-site').textContent).toBe('No work site specified');
+  });
+
+  it('falls back when reference point number and remarks are falsy', () => {
+    const card = buildCard({ ...sample, referencePointNumber: '', remarks: '' });
+    expect(card.querySelector('.card-reference-point-number').textContent).toBe('Ref: Not specified');
+    expect(card.querySelector('.card-remarks').textContent).toBe('Remarks: None');
   });
 
   it('HTML-escapes dangerous strings in text fields', () => {

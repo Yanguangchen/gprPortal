@@ -113,6 +113,8 @@ async function boot() {
       { id: 'projectName', label: 'Project Name', type: 'text' },
       { id: 'workSite',    label: 'Work Site',    type: 'text' },
       { id: 'imageDate',   label: 'Scan Date',    type: 'date' },
+      { id: 'referencePointNumber', label: 'Reference Point Number', type: 'text' },
+      { id: 'remarks', label: 'Remarks', type: 'text' },
     ],
     confirmLabel: 'Save Changes',
     confirmVariant: 'primary',
@@ -136,19 +138,23 @@ async function boot() {
         projectName: rec.projectName,
         workSite:    rec.workSite,
         imageDate:   rec.imageDate,
+        referencePointNumber: rec.referencePointNumber,
+        remarks: rec.remarks,
       });
       if (!values) return; // cancelled
 
       const company = values.companyName.trim();
       const project = values.projectName.trim();
       const workSite = values.workSite.trim();
+      const referencePointNumber = values.referencePointNumber.trim();
+      const remarks = values.remarks.trim();
       if (!company) { editModal.setStatus('Company name is required.', 'error'); return; }
       if (!project) { editModal.setStatus('Project name is required.', 'error'); return; }
       if (!workSite) { editModal.setStatus('Work site is required.', 'error'); return; }
 
       editModal.setLoading(true);
       try {
-        const fields = { companyName: company, projectName: project, workSite, imageDate: values.imageDate };
+        const fields = { companyName: company, projectName: project, workSite, imageDate: values.imageDate, referencePointNumber, remarks };
         await api.update(rec.id, fields);
         gallery.updateRecord(rec.id, fields);
         audio.success();
@@ -194,4 +200,3 @@ async function boot() {
 }
 
 boot().catch(console.error);
-
