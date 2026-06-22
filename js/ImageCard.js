@@ -24,6 +24,7 @@ export function buildCard(rec, { onView, onEdit, onDelete } = {}) {
     <div class="card-body">
       <div class="card-company">${esc(rec.companyName)}</div>
       <div class="card-project">${esc(rec.projectName)}</div>
+      <div class="card-work-site">${esc(rec.workSite || 'No work site specified')}</div>
       <div class="card-date">${formatDate(rec.imageDate)}</div>
     </div>
     <div class="card-actions">

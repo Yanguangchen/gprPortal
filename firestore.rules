@@ -1,0 +1,16 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // GPR Images collection: Restrict all access to a specific administrator UID
+    match /gpr_images/{imageId} {
+      allow read, write: if request.auth != null && request.auth.uid == 'gV9UDP2O0efmp3YWZiWk5NOXfYm1';
+    }
+    
+    // Default: Deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

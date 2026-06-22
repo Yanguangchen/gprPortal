@@ -7,87 +7,97 @@ Living document tracking the current state, decisions, and open questions for th
 ## What This App Does
 
 A construction engineering company uploads Ground Penetrating Radar scan images after each site survey. This portal lets staff:
-- Upload a scan image + tag it with company name, project name, and scan date
+- Upload a scan image + tag it with company name, project name, work site, and scan date
 - Browse all images in a filterable gallery
-- Edit metadata (company/project/date) without re-uploading
+- Edit metadata (company/project/work site/date) without re-uploading
 - Delete records and their associated Storage files
-
-No authentication — the app is intended for internal use on a trusted network.
+- Secure access via Google Sign-in for authorized personnel only
 
 ---
 
-## Current State (as of April 2025)
+## Current State (as of April 2026)
 
-| Area            | Status                                                   |
-|-----------------|----------------------------------------------------------|
-| UI / layout     | Complete — dark glassmorphic, responsive                 |
-| Dummy data mode | Working — `USE_FIREBASE = false` in `js/api.js`          |
-| Firebase wiring | Code complete, untested — needs real `firebaseConfig`    |
-| PWA / icons     | `manifest.json` wired; icon images (`favicon.png`, `icon-192.png`, `icon-512.png`, `apple-touch-icon.png`) must be supplied |
-| Auth            | Not implemented — out of scope for V1                    |
-| Pagination      | Not implemented — all records loaded at once             |
+| Area              | Status                                                                           |
+|-------------------|----------------------------------------------------------------------------------|
+| UI / layout       | Complete — glassmorphic, responsive cards, sci-fi theme system                   |
+| Auth              | **Live** — Google Sign-in implemented with dedicated User Profile card           |
+| Security          | **Active** — Firestore & Storage rules restrict access to specific Admin UID      |
+| Firebase wiring   | **Live** — USE_FIREBASE = true, real config in js/api.js                         |
+| Image compression | Active — client-side JPEG compress (max 1920×1080, q=0.82)                       |
+| Deployment        | **Live on Vercel** — https://gpr-portal.vercel.app                               |
+| CORS              | Configured — cors.json created to allow uploads from localhost and Vercel domains |
+| Error Handling    | Detailed — descriptive errors for permission-denied, storage-quota, etc.         |
+
+---
+
+## Firebase Project
+
+| Setting          | Value                                       |
+|------------------|---------------------------------------------|
+| Project ID       | `gprportal-49b88`                           |
+| Admin UID        | `gV9UDP2O0efmp3YWZiWk5NOXfYm1`              |
+| Plan             | **Blaze (Pay-as-you-go)**                   |
+| Firestore coll.  | `gpr_images`                                |
+| Storage bucket   | `gs://gprportal-49b88.firebasestorage.app`  |
 
 ---
 
 ## Key Decisions
 
-### Why no framework
-The customer's IT team deploys static files. No Node, no build pipeline, no server-side dependencies. The app must open directly from a file server or `file://`. ES modules in modern browsers satisfy this constraint without any bundling.
+### Firebase Authentication (V2)
+Implemented Google Sign-in to replace the "trusted network" assumption of V1. The app now requires authentication to access any CRUD features. A dedicated `#user-profile` card at the top of the app provides status and login/logout actions.
 
-### USE_FIREBASE flag
-A single boolean in `js/api.js` routes every data call through either the live Firebase functions (`fb_*`) or local dummy shims (`dummy_*`). The dummy shims mirror the same async signature, so UI code never needs to know which backend it's talking to. Switching to live Firebase requires only:
-1. Filling in `firebaseConfig` values
-2. Flipping `USE_FIREBASE = true`
+### UID-Based Security Rules
+Access is restricted at the database and storage level via rules that check `request.auth.uid`. The current rules only allow access for the specific administrator UID (`gV9UDP2O0efmp3YWZiWk5NOXfYm1`).
 
-### Modal as a promise
-`Modal.open()` returns a `Promise` that resolves with field values on confirm, `null` on cancel. The modal stays open after confirm — the caller sets `modal.setLoading(true)`, does async work, then calls `modal.close()` on success or `modal.setStatus()` on error. This keeps all business logic in `app.js`, not inside the modal component.
+### Static Deployment (Vercel)
+The project is hosted on Vercel as a static site. `vercel.json` ensures all paths route to `index.html` (SPA behavior) and explicitly handles static file serving to avoid Node.js misidentification.
 
-### No separate filter state
-`Gallery._filter()` reads directly from the filter DOM inputs on every `_render()` call. There is no duplicated filter-state object — the DOM inputs are the state.
+### CORS Management
+Firebase Storage CORS policy must be manually set via `gsutil` or Google Cloud Shell whenever new origins are added. The current `cors.json` includes `localhost`, `127.0.0.1`, and `gpr-portal.vercel.app`.
+
+### Error Handling System
+`js/api.js` contains a mapper that translates technical Firebase error codes into user-friendly messages. These messages are passed through the async/await chain and displayed in component-specific status elements.
 
 ---
 
 ## Module Responsibilities
 
-| File                  | Responsibility                                           |
-|-----------------------|----------------------------------------------------------|
-| `app.js`              | Boot, instantiate components, wire events to api         |
-| `js/api.js`           | All data I/O — Firebase + dummy shims, `USE_FIREBASE` flag |
-| `js/utils.js`         | `esc()`, `formatDate()`, `delay()`                       |
-| `js/Modal.js`         | Generic promise-based modal (form or confirm)            |
-| `js/DropZone.js`      | Drag-drop / browse file picker component                 |
-| `js/ImageCard.js`     | Pure function: record → card DOM element                 |
-| `js/Gallery.js`       | Filter bar, grid render, lightbox, record state          |
-| `js/UploadPanel.js`   | Upload form panel, owns DropZone instance                |
+| File                  | Responsibility                                                |
+|-----------------------|---------------------------------------------------------------|
+| `app.js`              | Orchestrator: Init theme, handles Auth flow, wires components |
+| `js/api.js`           | Data Layer: Auth, CRUD, dummy shims, error mapping            |
+| `js/utils.js`         | Utilities: `esc()`, `formatDate()`, `compressImage()`         |
+| `js/theme.js`         | Theme persistence, `initTheme()`, `renderThemeSwitcher()`     |
+| `js/Modal.js`         | Generic promise-based modal (form or confirm)                 |
+| `js/DropZone.js`      | Drag-drop / browse file picker component                      |
+| `js/ImageCard.js`     | UI Function: record → card DOM element                        |
+| `js/Gallery.js`       | UI Component: Filter bar, image grid, lightbox                |
+| `js/UploadPanel.js`   | UI Component: Upload form panel with DropZone                 |
 
 ---
 
-## How to Add a New Field
+## Deployment & Setup Guide
 
-1. Add the field to Firestore schema (update `CLAUDE.md` table)
-2. Add it to `fb_create` / `dummy_create` in `js/api.js`
-3. Add a `field-group` input in `UploadPanel.js` and pass the value through `onUpload`
-4. Add it to the `editModal` fields array in `app.js`
-5. Render it in `ImageCard.js` if it should appear on cards
+1.  **Firebase Console**:
+    - Enable Authentication (Google)
+    - Create Firestore `gpr_images` collection
+    - Initialize Storage bucket
+    - Add Authorized Domains (Vercel URL)
+2.  **CLI / Cloud Shell**:
+    - Set Firestore Rules (`firestore.rules`)
+    - Set Storage Rules (`storage.rules`)
+    - Set Storage CORS (`cors.json`)
+3.  **Vercel**:
+    - Connect GitHub repo
+    - Set Framework Preset to "Other"
+    - Deployment automatically picks up `vercel.json`
 
 ---
 
 ## Known Limitations / Backlog
 
-- **No pagination** — `getDocs` fetches the entire collection. Will need Firestore query cursors once the collection grows large.
-- **No Firebase auth** — any user on the network can create, edit, or delete records.
-- **No image type validation beyond `accept="image/*"`** — malformed files will upload but may not render.
-- **Object URLs for dummy uploads** are revoked when the page reloads — dummy-uploaded images won't persist between sessions (expected; dummy mode is dev-only).
-- **PWA icons** — `manifest.json` is wired but the icon PNG files (`favicon.png`, `icon-192.png`, `icon-512.png`, `apple-touch-icon.png`) must be provided before installing to homescreen.
-
----
-
-## Firebase Setup Checklist
-
-- [ ] Create a Firebase project at console.firebase.google.com
-- [ ] Enable Firestore (start in test mode or add security rules)
-- [ ] Enable Storage (start in test mode or add security rules)
-- [ ] Copy the web app config into `js/api.js` → `firebaseConfig`
-- [ ] Set `USE_FIREBASE = true` in `js/api.js`
-- [ ] Add Firestore security rule: require `auth != null` if auth is added later
-- [ ] Add Storage CORS config if serving from a custom domain
+- **No Multi-user Permissions** — All access is currently restricted to one specific admin UID.
+- **No Pagination** — All records loaded at once.
+- **PWA icons** — Standard icons referenced in `manifest.json` should be replaced with custom brand assets.
+- **CORS propagation** — Changes to `cors.json` can take up to 60 seconds to reflect on the live site.

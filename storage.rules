@@ -1,0 +1,16 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // GPR Images folder: Restrict all access to your specific UID
+    match /gpr_images/{allPaths=**} {
+      allow read, write: if request.auth != null && request.auth.uid == 'gV9UDP2O0efmp3YWZiWk5NOXfYm1';
+    }
+    
+    // Default: Deny all other access
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

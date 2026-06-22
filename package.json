@@ -1,0 +1,12 @@
+{
+  "name": "gpr-portal",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Static GPR image portal",
+  "scripts": {
+    "start": "node server.cjs",
+    "dev": "node server.cjs",
+    "serve": "node server.cjs",
+    "check": "node --check app.js && node --check js/api.js && node --check js/DropZone.js && node --check js/Gallery.js && node --check js/ImageCard.js && node --check js/Modal.js && node --check js/UploadPanel.js && node --check js/utils.js && node --check server.cjs"
+  }
+}
