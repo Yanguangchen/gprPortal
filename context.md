@@ -21,7 +21,7 @@ A construction engineering company uploads Ground Penetrating Radar scan images 
 |-------------------|----------------------------------------------------------------------------------|
 | UI / layout       | Complete — glassmorphic, responsive cards, sci-fi theme system                   |
 | Auth              | **Live** — Google Sign-in implemented with dedicated User Profile card           |
-| Security          | **Active** — Firestore & Storage rules restrict access to specific Admin UID      |
+| Security          | **Active** — Firestore rules use an authorized UID allowlist; Storage rules are UID-based |
 | Firebase wiring   | **Live** — USE_FIREBASE = true, real config in js/api.js                         |
 | Image compression | Active — client-side JPEG compress (max 1920×1080, q=0.82)                       |
 | Deployment        | **Live on Vercel** — https://gpr-portal.vercel.app                               |
@@ -35,7 +35,7 @@ A construction engineering company uploads Ground Penetrating Radar scan images 
 | Setting          | Value                                       |
 |------------------|---------------------------------------------|
 | Project ID       | `gprportal-49b88`                           |
-| Admin UID        | `gV9UDP2O0efmp3YWZiWk5NOXfYm1`              |
+| Firestore users  | See `allowedUsers.md`                       |
 | Plan             | **Blaze (Pay-as-you-go)**                   |
 | Firestore coll.  | `gpr_images`                                |
 | Storage bucket   | `gs://gprportal-49b88.firebasestorage.app`  |
@@ -48,7 +48,7 @@ A construction engineering company uploads Ground Penetrating Radar scan images 
 Implemented Google Sign-in to replace the "trusted network" assumption of V1. The app now requires authentication to access any CRUD features. A dedicated `#user-profile` card at the top of the app provides status and login/logout actions.
 
 ### UID-Based Security Rules
-Access is restricted at the database and storage level via rules that check `request.auth.uid`. The current rules only allow access for the specific administrator UID (`gV9UDP2O0efmp3YWZiWk5NOXfYm1`).
+Access is restricted at the database and storage level via rules that check `request.auth.uid`. Firestore allows the authenticated UIDs documented in `allowedUsers.md` to read and write all documents through the allowlist in `firestore.rules`. Storage access is controlled separately in `storage.rules`.
 
 ### Static Deployment (Vercel)
 The project is hosted on Vercel as a static site. `vercel.json` ensures all paths route to `index.html` (SPA behavior) and explicitly handles static file serving to avoid Node.js misidentification.
@@ -97,7 +97,7 @@ Firebase Storage CORS policy must be manually set via `gsutil` or Google Cloud S
 
 ## Known Limitations / Backlog
 
-- **No Multi-user Permissions** — All access is currently restricted to one specific admin UID.
+- **Manual allowlist sync** — `allowedUsers.md` documents authorized users, but `firestore.rules` must be updated and deployed when the list changes.
 - **No Pagination** — All records loaded at once.
 - **PWA icons** — Standard icons referenced in `manifest.json` should be replaced with custom brand assets.
 - **CORS propagation** — Changes to `cors.json` can take up to 60 seconds to reflect on the live site.

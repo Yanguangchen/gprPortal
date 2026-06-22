@@ -34,7 +34,7 @@ To connect to a live Firebase project:
 
 ### Project Info
 - **Project ID**: `gprportal-49b88`
-- **Admin UID**: `gV9UDP2O0efmp3YWZiWk5NOXfYm1` (Hardcoded in rules)
+- **Allowed Firestore Users**: Listed in `allowedUsers.md`; matching UIDs are hardcoded in `firestore.rules`
 - **Plan**: Blaze (Pay-as-you-go)
 
 ## Firestore Schema (`gpr_images` collection)
@@ -58,7 +58,7 @@ style.css           – Glassmorphism cards, responsive grid, theme system, auth
 app.js              – Orchestrator: wires api → components, handles Auth flow
 manifest.json       – PWA manifest (standalone fullscreen, theme #060a12)
 vercel.json         – Vercel deployment config for static files
-firestore.rules     – Access control rules (UID-based)
+firestore.rules     – Firestore access control rules (UID allowlist from allowedUsers.md)
 storage.rules       – Storage access control rules (UID-based)
 cors.json           – Firebase Storage CORS configuration
 js/
@@ -74,10 +74,20 @@ js/
 ## Architecture & Auth
 
 - **Authentication**: Powered by Firebase Google Auth. The app listens for auth changes in `app.js` and renders the `#user-profile` card accordingly.
-- **Security**: Access to Firestore and Storage is restricted to a specific administrator UID via rules.
+- **Security**: Firestore access is restricted to the authenticated Firebase UIDs listed in `allowedUsers.md` and mirrored in `firestore.rules`. Storage access is controlled separately in `storage.rules`.
 - **Data Flow**: `js/api.js` routes all calls through either Firebase or local dummy shims. Dummy mode includes a persistent session state for the demo user.
 - **Modals**: `Modal.open()` returns a Promise. The login modal is handled separately in `app.js` with a custom body and button wiring.
 - **Responsive**: The `#user-profile` card and all main sections stack vertically on mobile (max-width 780px).
+
+## Firestore Access Control
+
+`allowedUsers.md` documents the authorized Firebase Authentication users by email and UID. `firestore.rules` allows those UIDs to read and write every document in the Firestore database through the `isAllowedUser()` helper and `match /{document=**}` rule.
+
+When adding or removing an authorized Firestore user:
+
+1. Update `allowedUsers.md` with the user's email and Firebase Auth UID.
+2. Update the UID array in `firestore.rules`.
+3. Deploy the updated Firestore rules to Firebase.
 
 ## Key Conventions
 

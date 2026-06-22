@@ -14,19 +14,31 @@ export class DropZone {
 
     container.innerHTML = `
       <div class="drop-zone" tabindex="0" role="button" aria-label="Click or drag to upload an image">
+        <div class="sweep" aria-hidden="true"></div>
+        <svg class="rings" width="240" height="240" viewBox="0 0 300 300" aria-hidden="true">
+          <circle cx="150" cy="150" r="60"/>
+          <circle cx="150" cy="150" r="100"/>
+          <circle cx="150" cy="150" r="140"/>
+        </svg>
         <input type="file" accept="image/*" hidden />
         <div class="drop-zone-inner">
-          <svg class="drop-icon" viewBox="0 0 64 64" fill="none" aria-hidden="true">
-            <path d="M32 12v28M20 24l12-12 12 12" stroke="currentColor" stroke-width="3"
-              stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M12 44v4a4 4 0 004 4h32a4 4 0 004-4v-4" stroke="currentColor"
-              stroke-width="3" stroke-linecap="round"/>
-          </svg>
-          <p class="drop-label">Drag &amp; drop image here</p>
-          <p class="drop-sub">or <button class="link-btn" type="button">browse file</button></p>
-          <p class="drop-sub file-name"></p>
+          <span class="drop-ic">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M12 16V4M7 9l5-5 5 5"
+                    stroke="currentColor" stroke-width="1.8"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"
+                    stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+          </span>
+          <span class="drop-title">Drag &amp; drop your scan here</span>
+          <span class="drop-sub">or <button class="link-btn" type="button">browse files</button></span>
+          <span class="drop-formats">
+            <span class="chip">PNG</span><span class="chip">JPG</span><span class="chip">TIFF</span>
+          </span>
         </div>
         <img class="preview-img" alt="Selected image preview" hidden />
+        <p class="file-name" hidden></p>
       </div>
     `;
 
@@ -57,19 +69,49 @@ export class DropZone {
 
   reset() {
     this._file = null;
-    this._input.value    = '';
-    this._preview.hidden = true;
-    this._preview.src    = '';
-    this._inner.style.display = '';
+    this._input.value         = '';
+    this._preview.hidden      = true;
+    this._preview.src         = '';
+    this._nameEl.hidden       = true;
     this._nameEl.textContent  = '';
+    this._inner.style.display = '';
+    this._root.querySelector('.preview-bar')?.remove();
   }
 
   _setFile(file) {
     this._file = file;
-    this._nameEl.textContent  = file.name;
-    this._preview.src         = URL.createObjectURL(file);
-    this._preview.hidden      = false;
+    this._nameEl.textContent = file.name;
+    this._preview.src        = URL.createObjectURL(file);
+    this._preview.hidden     = false;
     this._inner.style.display = 'none';
+
+    // Preview bar with filename, size, and a remove button
+    let bar = this._root.querySelector('.preview-bar');
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.className = 'preview-bar';
+      this._root.appendChild(bar);
+    }
+    const sz = file.size > 1e6
+      ? (file.size / 1048576).toFixed(1) + ' MB'
+      : Math.round(file.size / 1024) + ' KB';
+    bar.innerHTML = `
+      <div class="preview-bar-info">
+        <span class="preview-bar-name"></span>
+        <span class="preview-bar-size">${sz} · ready to upload</span>
+      </div>
+      <button class="preview-x" type="button" title="Remove file" aria-label="Remove file">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M18 6 6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </button>
+    `;
+    bar.querySelector('.preview-bar-name').textContent = file.name;
+    bar.querySelector('.preview-x').addEventListener('click', e => {
+      e.stopPropagation();
+      this.reset();
+    });
+
     this.onSelect?.(file);
   }
 }

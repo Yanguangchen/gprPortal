@@ -2,11 +2,22 @@
   "name": "gpr-portal",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "description": "Static GPR image portal",
   "scripts": {
     "start": "node server.cjs",
     "dev": "node server.cjs",
     "serve": "node server.cjs",
-    "check": "node --check app.js && node --check js/api.js && node --check js/DropZone.js && node --check js/Gallery.js && node --check js/ImageCard.js && node --check js/Modal.js && node --check js/UploadPanel.js && node --check js/utils.js && node --check server.cjs"
+    "check": "node --check app.js && node --check js/api.js && node --check js/DropZone.js && node --check js/Gallery.js && node --check js/ImageCard.js && node --check js/Modal.js && node --check js/UploadPanel.js && node --check js/utils.js && node --check server.cjs",
+    "lint": "eslint .",
+    "test": "vitest run --coverage"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.4",
+    "@vitest/coverage-v8": "^2.1.9",
+    "eslint": "^9.39.4",
+    "globals": "^17.6.0",
+    "happy-dom": "^20.10.6",
+    "vitest": "^2.1.9"
   }
 }
