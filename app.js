@@ -15,87 +15,8 @@ import { audio, initAudioFeedback, renderAudioToggle } from './js/audio.js';
 initTheme();
 initAudioFeedback();
 
-const COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
-
-function getCookie(name) {
-  return document.cookie
-    .split('; ')
-    .find(row => row.startsWith(`${name}=`))
-    ?.split('=')[1];
-}
-
-function setCookie(name, value) {
-  document.cookie = `${name}=${value}; max-age=${COOKIE_MAX_AGE}; path=/; SameSite=Lax`;
-}
-
-const EYE_ICON = `
-  <svg viewBox="0 0 24 24" aria-hidden="true">
-    <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"></path>
-    <circle cx="12" cy="12" r="3"></circle>
-  </svg>
-`;
-
-const EYE_OFF_ICON = `
-  <svg viewBox="0 0 24 24" aria-hidden="true">
-    <path d="M3 3l18 18"></path>
-    <path d="M10.6 10.6A3 3 0 0 0 12 15a3 3 0 0 0 2.4-1.2"></path>
-    <path d="M7.4 7.8C4.5 9.4 2.5 12 2.5 12s3.5 6 9.5 6c1.6 0 3-.4 4.2-1"></path>
-    <path d="M13.7 6.2C18.6 7 21.5 12 21.5 12s-.9 1.6-2.5 3"></path>
-  </svg>
-`;
-
-function createVisibilityToggle({ target, cookieName, hiddenLabel, visibleLabel, hiddenIcon, visibleIcon }) {
-  if (!target) return null;
-
-  const savedValue = getCookie(cookieName);
-  let isVisible = savedValue !== 'false';
-  if (savedValue === undefined) setCookie(cookieName, 'true');
-  let button = null;
-
-  function render() {
-    target.classList.toggle('is-collapsed', !isVisible);
-    if (!button) return;
-    button.innerHTML = isVisible ? hiddenIcon : visibleIcon;
-    button.title = isVisible ? hiddenLabel : visibleLabel;
-    button.setAttribute('aria-label', isVisible ? hiddenLabel : visibleLabel);
-    button.setAttribute('aria-pressed', String(!isVisible));
-  }
-
-  function wireButton(nextButton) {
-    if (!nextButton) return;
-    button = nextButton;
-    button.onclick = () => {
-      isVisible = !isVisible;
-      setCookie(cookieName, String(isVisible));
-      render();
-    };
-    render();
-  }
-
-  render();
-  return { render, wireButton };
-}
 
 async function boot() {
-  const headerVisibility = createVisibilityToggle({
-    target: document.querySelector('.glass.header'),
-    cookieName: 'gpr-header-visible',
-    hiddenLabel: 'Hide Header',
-    visibleLabel: 'Show Header',
-    hiddenIcon: EYE_OFF_ICON,
-    visibleIcon: EYE_ICON,
-  });
-  headerVisibility?.wireButton(document.getElementById('toggle-header'));
-
-  const profileVisibility = createVisibilityToggle({
-    target: document.getElementById('user-profile'),
-    cookieName: 'gpr-user-profile-visible',
-    hiddenLabel: 'Hide Profile',
-    visibleLabel: 'Show Profile',
-    hiddenIcon: EYE_OFF_ICON,
-    visibleIcon: EYE_ICON,
-  });
-
   renderThemeSwitcher(document.getElementById('theme-switcher'));
   renderAudioToggle(document.getElementById('audio-switcher'));
 
@@ -144,20 +65,8 @@ async function boot() {
   function renderUserProfile(user) {
     if (!user) {
       userProfileEl.innerHTML = `
-        <div class="profile-inner">
-          <div class="user-profile">
-            <div class="user-info">
-              <span class="user-name">Guest</span>
-              <span class="user-email">Please sign in to manage scans</span>
-            </div>
-          </div>
-          <div class="auth-card-actions">
-            <button id="header-login-btn" class="btn-primary btn-sm">Sign In</button>
-          </div>
-        </div>
-        <button id="toggle-user-profile" class="section-toggle" type="button"></button>
+        <button id="header-login-btn" class="btn-primary btn-sm">Sign In</button>
       `;
-      profileVisibility?.wireButton(document.getElementById('toggle-user-profile'));
       document.getElementById('header-login-btn').onclick = () => {
         loginModal.open();
         setupLoginBtn();
@@ -167,21 +76,17 @@ async function boot() {
 
     const { displayName, email, photoURL } = user;
     userProfileEl.innerHTML = `
-      <div class="profile-inner">
-        <div class="user-profile">
-          <img class="user-avatar" src="${photoURL || 'https://www.gravatar.com/avatar/000?d=mp'}" alt="" />
-          <div class="user-info">
-            <span class="user-name">${displayName || 'User'}</span>
-            <span class="user-email">${email || ''}</span>
-          </div>
-        </div>
-        <div class="auth-card-actions">
-          <button id="header-logout-btn" class="btn-ghost btn-sm">Sign Out</button>
-        </div>
+      <div class="userchip">
+        <img class="avatar"
+             src="${photoURL || 'https://www.gravatar.com/avatar/000?d=mp'}"
+             alt="${displayName || 'User'}" />
+        <span class="ui">
+          <span class="un">${displayName || 'User'}</span>
+          <span class="ue">${email || ''}</span>
+        </span>
       </div>
-      <button id="toggle-user-profile" class="section-toggle" type="button"></button>
+      <button id="header-logout-btn" class="btn-ghost btn-sm">Sign Out</button>
     `;
-    profileVisibility?.wireButton(document.getElementById('toggle-user-profile'));
 
     document.getElementById('header-logout-btn').onclick = () => {
       audio.action();
