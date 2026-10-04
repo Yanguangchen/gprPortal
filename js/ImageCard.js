@@ -15,18 +15,19 @@ export function buildCard(rec, { onView, onEdit, onDelete } = {}) {
   card.className  = 'image-card';
   card.dataset.id = rec.id;
 
+  // Optional fields are left out entirely when empty rather than showing placeholders.
+  const line = (cls, text) => text ? `<div class="${cls}">${esc(text)}</div>` : '';
+
   card.innerHTML = `
     <div class="card-img-wrap">
       <img src="${esc(rec.imageUrl)}" alt="${esc(rec.imageName)}" loading="lazy" />
-      <div class="card-overlay"></div>
-      <span class="card-badge">GPR</span>
     </div>
     <div class="card-body">
       <div class="card-company">${esc(rec.companyName)}</div>
       <div class="card-project">${esc(rec.projectName)}</div>
-      <div class="card-work-site">${esc(rec.workSite || 'No work site specified')}</div>
-      <div class="card-reference-point-number">Ref: ${esc(rec.referencePointNumber || 'Not specified')}</div>
-      <div class="card-remarks">Remarks: ${esc(rec.remarks || 'None')}</div>
+      ${line('card-work-site', rec.workSite)}
+      ${line('card-reference-point-number', rec.referencePointNumber && `Ref: ${rec.referencePointNumber}`)}
+      ${line('card-remarks', rec.remarks)}
       <div class="card-date">${formatDate(rec.imageDate)}</div>
     </div>
     <div class="card-actions">

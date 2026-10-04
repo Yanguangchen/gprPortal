@@ -1,26 +1,28 @@
+import { esc, formatBytes } from './utils.js';
+
 /**
- * Self-contained drag-and-drop / click-to-browse file picker.
+ * Self-contained drag-and-drop / click-to-browse picker for up to
+ * `maxFiles` images. New selections are appended to the staged list;
+ * anything past the limit is skipped and reported via `onLimit`.
  *
  * Usage:
- *   const dz = new DropZone(containerEl);
- *   dz.onSelect = file => console.log(file.name);
- *   const file = dz.file;  // currently staged file (null if none)
- *   dz.reset();            // clear selection and preview
+ *   const dz = new DropZone(containerEl, { maxFiles: 3 });
+ *   dz.onChange = files => console.log(files.length);
+ *   dz.onLimit  = skipped => console.warn(`${skipped} file(s) skipped`);
+ *   const files = dz.files;  // staged files (array copy)
+ *   dz.removeFile(file);     // unstage one file
+ *   dz.reset();              // clear selection and previews
  */
 export class DropZone {
-  constructor(container) {
-    this._file    = null;
-    this.onSelect = null; // optional callback(file)
+  constructor(container, { maxFiles = 3 } = {}) {
+    this._max     = maxFiles;
+    this._items   = []; // [{ file, url }]
+    this.onChange = null; // optional callback(files)
+    this.onLimit  = null; // optional callback(skippedCount)
 
     container.innerHTML = `
-      <div class="drop-zone" tabindex="0" role="button" aria-label="Click or drag to upload an image">
-        <div class="sweep" aria-hidden="true"></div>
-        <svg class="rings" width="240" height="240" viewBox="0 0 300 300" aria-hidden="true">
-          <circle cx="150" cy="150" r="60"/>
-          <circle cx="150" cy="150" r="100"/>
-          <circle cx="150" cy="150" r="140"/>
-        </svg>
-        <input type="file" accept="image/*" hidden />
+      <div class="drop-zone" tabindex="0" role="button" aria-label="Click or drag to add up to ${maxFiles} images">
+        <input type="file" accept="image/*" multiple hidden />
         <div class="drop-zone-inner">
           <span class="drop-ic">
             <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -31,87 +33,125 @@ export class DropZone {
                     stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
             </svg>
           </span>
-          <span class="drop-title">Drag &amp; drop your scan here</span>
+          <span class="drop-title">Drop up to ${maxFiles} scans here</span>
           <span class="drop-sub">or <button class="link-btn" type="button">browse files</button></span>
-          <span class="drop-formats">
-            <span class="chip">PNG</span><span class="chip">JPG</span><span class="chip">TIFF</span>
-          </span>
         </div>
-        <img class="preview-img" alt="Selected image preview" hidden />
-        <p class="file-name" hidden></p>
+        <div class="dz-grid" hidden></div>
+        <div class="dz-count" hidden></div>
       </div>
     `;
 
-    this._root      = container.querySelector('.drop-zone');
-    this._input     = container.querySelector('input[type="file"]');
-    this._inner     = container.querySelector('.drop-zone-inner');
-    this._nameEl    = container.querySelector('.file-name');
-    this._preview   = container.querySelector('.preview-img');
+    this._root    = container.querySelector('.drop-zone');
+    this._input   = container.querySelector('input[type="file"]');
+    this._inner   = container.querySelector('.drop-zone-inner');
+    this._grid    = container.querySelector('.dz-grid');
+    this._countEl = container.querySelector('.dz-count');
     const browseBtn = container.querySelector('.link-btn');
 
-    browseBtn.addEventListener('click', e => { e.stopPropagation(); this._input.click(); });
-    this._root.addEventListener('click',     () => this._input.click());
-    this._root.addEventListener('keydown',   e => { if (e.key === 'Enter' || e.key === ' ') this._input.click(); });
+    browseBtn.addEventListener('click', e => { e.stopPropagation(); this._browse(); });
+    this._root.addEventListener('click',     () => this._browse());
+    this._root.addEventListener('keydown',   e => {
+      if (e.target !== this._root) return;
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this._browse(); }
+    });
     this._root.addEventListener('dragover',  e => { e.preventDefault(); this._root.classList.add('dragover'); });
     this._root.addEventListener('dragleave', () => this._root.classList.remove('dragover'));
     this._root.addEventListener('drop', e => {
       e.preventDefault();
       this._root.classList.remove('dragover');
-      const f = e.dataTransfer.files[0];
-      if (f) this._setFile(f);
+      this._addFiles(e.dataTransfer.files);
     });
     this._input.addEventListener('change', () => {
-      if (this._input.files[0]) this._setFile(this._input.files[0]);
+      this._addFiles(this._input.files);
+      this._input.value = ''; // allow re-selecting the same file after removing it
     });
   }
 
-  get file() { return this._file; }
+  get files() { return this._items.map(it => it.file); }
+
+  /** First staged file, or null. */
+  get file() { return this._items[0]?.file ?? null; }
+
+  get maxFiles() { return this._max; }
+
+  removeFile(file) {
+    const idx = this._items.findIndex(it => it.file === file);
+    if (idx === -1) return;
+    URL.revokeObjectURL(this._items[idx].url);
+    this._items.splice(idx, 1);
+    this._render();
+    this.onChange?.(this.files);
+  }
 
   reset() {
-    this._file = null;
-    this._input.value         = '';
-    this._preview.hidden      = true;
-    this._preview.src         = '';
-    this._nameEl.hidden       = true;
-    this._nameEl.textContent  = '';
-    this._inner.style.display = '';
-    this._root.querySelector('.preview-bar')?.remove();
+    this._items.forEach(it => URL.revokeObjectURL(it.url));
+    this._items = [];
+    this._input.value = '';
+    this._render();
   }
 
-  _setFile(file) {
-    this._file = file;
-    this._nameEl.textContent = file.name;
-    this._preview.src        = URL.createObjectURL(file);
-    this._preview.hidden     = false;
-    this._inner.style.display = 'none';
+  // ── Private ──────────────────────────────────────────────────────
 
-    // Preview bar with filename, size, and a remove button
-    let bar = this._root.querySelector('.preview-bar');
-    if (!bar) {
-      bar = document.createElement('div');
-      bar.className = 'preview-bar';
-      this._root.appendChild(bar);
+  _browse() {
+    if (this._items.length < this._max) this._input.click();
+  }
+
+  _addFiles(list) {
+    const incoming = Array.from(list || []).filter(f => !this._items.some(it =>
+      it.file.name === f.name && it.file.size === f.size && it.file.lastModified === f.lastModified
+    ));
+    if (!incoming.length) return;
+
+    const room    = this._max - this._items.length;
+    const accept  = incoming.slice(0, Math.max(room, 0));
+    const skipped = incoming.length - accept.length;
+
+    accept.forEach(file => this._items.push({ file, url: URL.createObjectURL(file) }));
+    if (accept.length) {
+      this._render();
+      this.onChange?.(this.files);
     }
-    const sz = file.size > 1e6
-      ? (file.size / 1048576).toFixed(1) + ' MB'
-      : Math.round(file.size / 1024) + ' KB';
-    bar.innerHTML = `
-      <div class="preview-bar-info">
-        <span class="preview-bar-name"></span>
-        <span class="preview-bar-size">${sz} · ready to upload</span>
-      </div>
-      <button class="preview-x" type="button" title="Remove file" aria-label="Remove file">
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M18 6 6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        </svg>
-      </button>
-    `;
-    bar.querySelector('.preview-bar-name').textContent = file.name;
-    bar.querySelector('.preview-x').addEventListener('click', e => {
-      e.stopPropagation();
-      this.reset();
+    if (skipped) this.onLimit?.(skipped);
+  }
+
+  _render() {
+    const n = this._items.length;
+    this._inner.style.display = n ? 'none' : '';
+    this._grid.hidden    = !n;
+    this._countEl.hidden = !n;
+    this._root.classList.toggle('has-files', n > 0);
+    this._root.classList.toggle('is-full', n >= this._max);
+    this._grid.dataset.count = n;
+
+    this._grid.innerHTML = this._items.map((it, i) => `
+      <figure class="dz-tile">
+        <img src="${esc(it.url)}" alt="Selected scan ${i + 1} preview" />
+        <figcaption class="preview-bar">
+          <span class="preview-bar-info">
+            <span class="preview-bar-name">${esc(it.file.name)}</span>
+            <span class="preview-bar-size">${formatBytes(it.file.size)} · ready</span>
+          </span>
+          <button class="preview-x" type="button" data-idx="${i}"
+                  title="Remove file" aria-label="Remove ${esc(it.file.name)}">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M18 6 6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </figcaption>
+      </figure>
+    `).join('');
+
+    this._grid.querySelectorAll('.preview-x').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        this.removeFile(this._items[Number(btn.dataset.idx)].file);
+      });
     });
 
-    this.onSelect?.(file);
+    const full = n >= this._max;
+    this._countEl.innerHTML = `
+      <span class="dz-count-n">${n} / ${this._max}</span>
+      <span class="dz-count-txt">${full ? 'Max reached' : '+ Add scan'}</span>
+    `;
   }
 }

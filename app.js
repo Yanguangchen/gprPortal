@@ -8,18 +8,13 @@ import { api, initFirebase, USE_FIREBASE } from './js/api.js';
 import { Gallery }     from './js/Gallery.js';
 import { UploadPanel } from './js/UploadPanel.js';
 import { Modal }       from './js/Modal.js';
-import { initTheme, renderThemeSwitcher } from './js/theme.js';
-import { audio, initAudioFeedback, renderAudioToggle } from './js/audio.js';
+import { esc }         from './js/utils.js';
+import { audio, initAudioFeedback } from './js/audio.js';
 
-// Apply saved theme immediately (before any rendering) to avoid flash
-initTheme();
 initAudioFeedback();
 
 
 async function boot() {
-  renderThemeSwitcher(document.getElementById('theme-switcher'));
-  renderAudioToggle(document.getElementById('audio-switcher'));
-
   if (USE_FIREBASE) await initFirebase();
 
 
@@ -27,18 +22,18 @@ async function boot() {
 
   // ── Auth modal ─────────────────────────────────────────────────
   const loginModal = new Modal({
-    title: 'Authentication Required',
+    title: 'Sign in',
     bodyHTML: `
       <div class="auth-modal-content">
-        <p class="modal-body">Please sign in with your Google account to access the portal.</p>
-        <button id="google-login-btn" class="btn-primary auth-btn">
+        <p class="modal-body">Use your company Google account to access the portal.</p>
+        <button id="google-login-btn" class="btn-ghost auth-btn" type="button">
           <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="" width="18" height="18" />
-          <span>Sign in with Google</span>
+          <span>Continue with Google</span>
         </button>
       </div>
     `,
-    confirmLabel: 'Close',
-    confirmVariant: 'ghost',
+    actions: false,
+    size: 'sm',
   });
 
   // Wire up the login button inside the modal
@@ -47,6 +42,7 @@ async function boot() {
     if (btn) {
       btn.onclick = async () => {
         loginModal.setLoading(true);
+        btn.disabled = true;
         try {
           await api.login();
           audio.success();
@@ -57,6 +53,7 @@ async function boot() {
           loginModal.setStatus('Login failed. Check console.', 'error');
         } finally {
           loginModal.setLoading(false);
+          btn.disabled = false;
         }
       };
     }
@@ -65,7 +62,7 @@ async function boot() {
   function renderUserProfile(user) {
     if (!user) {
       userProfileEl.innerHTML = `
-        <button id="header-login-btn" class="btn-primary btn-sm">Sign In</button>
+        <button id="header-login-btn" class="btn-primary btn-sm" type="button">Sign in</button>
       `;
       document.getElementById('header-login-btn').onclick = () => {
         loginModal.open();
@@ -75,17 +72,15 @@ async function boot() {
     }
 
     const { displayName, email, photoURL } = user;
+    const name = displayName || email || 'User';
     userProfileEl.innerHTML = `
-      <div class="userchip">
-        <img class="avatar"
-             src="${photoURL || 'https://www.gravatar.com/avatar/000?d=mp'}"
-             alt="${displayName || 'User'}" />
-        <span class="ui">
-          <span class="un">${displayName || 'User'}</span>
-          <span class="ue">${email || ''}</span>
-        </span>
+      <div class="userchip" title="${esc(email || '')}">
+        ${photoURL
+          ? `<img class="avatar" src="${esc(photoURL)}" alt="" referrerpolicy="no-referrer" />`
+          : `<span class="avatar">${esc(name.charAt(0).toUpperCase())}</span>`}
+        <span class="un">${esc(name)}</span>
       </div>
-      <button id="header-logout-btn" class="btn-ghost btn-sm">Sign Out</button>
+      <button id="header-logout-btn" class="btn-ghost btn-sm" type="button">Sign out</button>
     `;
 
     document.getElementById('header-logout-btn').onclick = () => {

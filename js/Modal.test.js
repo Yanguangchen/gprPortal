@@ -31,6 +31,16 @@ describe('Modal', () => {
   });
 
   describe('constructor', () => {
+    it('shows the Cancel/Confirm row by default', () => {
+      modal = new Modal({ title: 'Test' });
+      expect(document.querySelector('.modal-actions').hidden).toBe(false);
+    });
+
+    it('hides the Cancel/Confirm row when actions is false', () => {
+      modal = new Modal({ title: 'Sign in', actions: false });
+      expect(document.querySelector('.modal-actions').hidden).toBe(true);
+    });
+
     it('appends the modal element to document.body', () => {
       modal = new Modal({ title: 'Test' });
       expect(document.body.querySelector('.modal')).not.toBeNull();

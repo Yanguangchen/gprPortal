@@ -18,6 +18,13 @@ export function formatDate(iso, opts = { year: 'numeric', month: 'short', day: '
   return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', opts);
 }
 
+/** Human-readable file size, e.g. 845 KB / 12.4 MB */
+export function formatBytes(bytes) {
+  return bytes > 1e6
+    ? (bytes / 1048576).toFixed(1) + ' MB'
+    : Math.round(bytes / 1024) + ' KB';
+}
+
 export function delay(ms) {
   return new Promise(r => setTimeout(r, ms));
 }
@@ -31,9 +38,10 @@ export function delay(ms) {
  * @param {number} [opts.maxWidth=1920]
  * @param {number} [opts.maxHeight=1080]
  * @param {number} [opts.quality=0.82]   JPEG quality 0-1
+ * @param {Function} [opts.onDecoded]    Called once decoded: { width, height, outWidth, outHeight, quality }
  * @returns {Promise<File>}              Compressed JPEG File
  */
-export function compressImage(file, { maxWidth = 1920, maxHeight = 1080, quality = 0.82 } = {}) {
+export function compressImage(file, { maxWidth = 1920, maxHeight = 1080, quality = 0.82, onDecoded } = {}) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const objectUrl = URL.createObjectURL(file);
@@ -47,6 +55,7 @@ export function compressImage(file, { maxWidth = 1920, maxHeight = 1080, quality
         width  = Math.round(width  * ratio);
         height = Math.round(height * ratio);
       }
+      onDecoded?.({ width: img.width, height: img.height, outWidth: width, outHeight: height, quality });
 
       const canvas = document.createElement('canvas');
       canvas.width  = width;
