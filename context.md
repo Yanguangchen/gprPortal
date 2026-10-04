@@ -7,7 +7,7 @@ Living document tracking the current state, decisions, and open questions for th
 ## What This App Does
 
 A construction engineering company uploads Ground Penetrating Radar scan images after each site survey. This portal lets staff:
-- Upload a scan image + tag it with company name, project name, work site, and scan date
+- Upload up to 3 scan images at once + tag them with company name, project name, work site, and scan date
 - Browse all images in a filterable gallery
 - Edit metadata (company/project/work site/date) without re-uploading
 - Delete records and their associated Storage files
@@ -67,13 +67,14 @@ Firebase Storage CORS policy must be manually set via `gsutil` or Google Cloud S
 |-----------------------|---------------------------------------------------------------|
 | `app.js`              | Orchestrator: Init theme, handles Auth flow, wires components |
 | `js/api.js`           | Data Layer: Auth, CRUD, dummy shims, error mapping            |
-| `js/utils.js`         | Utilities: `esc()`, `formatDate()`, `compressImage()`         |
+| `js/utils.js`         | Utilities: `esc()`, `formatDate()`, `formatBytes()`, `compressImage()` |
 | `js/theme.js`         | Theme persistence, `initTheme()`, `renderThemeSwitcher()`     |
 | `js/Modal.js`         | Generic promise-based modal (form or confirm)                 |
-| `js/DropZone.js`      | Drag-drop / browse file picker component                      |
+| `js/DropZone.js`      | Drag-drop / browse picker for up to 3 images                  |
 | `js/ImageCard.js`     | UI Function: record → card DOM element                        |
 | `js/Gallery.js`       | UI Component: Filter bar, image grid, lightbox                |
-| `js/UploadPanel.js`   | UI Component: Upload form panel with DropZone                 |
+| `js/UploadPanel.js`   | UI Component: Upload form panel; compresses + uploads a batch |
+| `js/UploadModal.js`   | UI Component: Animated compression/upload progress modal     |
 
 ---
 

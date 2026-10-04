@@ -28,17 +28,31 @@ describe('DropZone', () => {
     container.remove();
   });
 
+  function select(files) {
+    const input = container.querySelector('input[type="file"]');
+    Object.defineProperty(input, 'files', { get: () => files, configurable: true });
+    input.dispatchEvent(new Event('change'));
+  }
+
+  function drop(files) {
+    const root = container.querySelector('.drop-zone');
+    const dropEvent = new Event('drop', { cancelable: true });
+    Object.defineProperty(dropEvent, 'dataTransfer', { value: { files } });
+    root.dispatchEvent(dropEvent);
+  }
+
   describe('constructor', () => {
     it('renders a .drop-zone element', () => {
       new DropZone(container);
       expect(container.querySelector('.drop-zone')).not.toBeNull();
     });
 
-    it('renders a hidden file input accepting images', () => {
+    it('renders a hidden multi-select file input accepting images', () => {
       new DropZone(container);
       const input = container.querySelector('input[type="file"]');
       expect(input).not.toBeNull();
       expect(input.accept).toBe('image/*');
+      expect(input.multiple).toBe(true);
       expect(input.hidden).toBe(true);
     });
 
@@ -47,89 +61,105 @@ describe('DropZone', () => {
       expect(container.querySelector('.link-btn')).not.toBeNull();
     });
 
-    it('renders a preview image that starts hidden', () => {
+    it('mentions the file limit in the prompt', () => {
+      new DropZone(container, { maxFiles: 3 });
+      expect(container.querySelector('.drop-title').textContent).toContain('up to 3');
+    });
+
+    it('starts with the preview grid hidden', () => {
       new DropZone(container);
-      expect(container.querySelector('.preview-img').hidden).toBe(true);
+      expect(container.querySelector('.dz-grid').hidden).toBe(true);
     });
   });
 
   describe('initial state', () => {
-    it('file is null before any selection', () => {
+    it('has no files before any selection', () => {
       const dz = new DropZone(container);
+      expect(dz.files).toEqual([]);
       expect(dz.file).toBeNull();
     });
   });
 
   describe('file selection via input change', () => {
-    it('sets the file property', () => {
+    it('stages every selected file', () => {
       const dz = new DropZone(container);
-      const file = makeFile();
-      const input = container.querySelector('input[type="file"]');
-      Object.defineProperty(input, 'files', { get: () => [file], configurable: true });
-      input.dispatchEvent(new Event('change'));
-      expect(dz.file).toBe(file);
+      const a = makeFile('a.jpg'), b = makeFile('b.jpg');
+      select([a, b]);
+      expect(dz.files).toEqual([a, b]);
+      expect(dz.file).toBe(a);
     });
 
-    it('shows the file name', () => {
+    it('renders one preview tile per file with its name', () => {
       new DropZone(container);
-      const file = makeFile('scan-001.jpg');
-      const input = container.querySelector('input[type="file"]');
-      Object.defineProperty(input, 'files', { get: () => [file], configurable: true });
-      input.dispatchEvent(new Event('change'));
-      expect(container.querySelector('.file-name').textContent).toBe('scan-001.jpg');
+      select([makeFile('scan-001.jpg'), makeFile('scan-002.jpg')]);
+      const names = [...container.querySelectorAll('.dz-tile .preview-bar-name')].map(n => n.textContent);
+      expect(names).toEqual(['scan-001.jpg', 'scan-002.jpg']);
+      expect(container.querySelector('.dz-grid').hidden).toBe(false);
+      expect(container.querySelector('.dz-grid').dataset.count).toBe('2');
+      expect(URL.createObjectURL).toHaveBeenCalledTimes(2);
     });
 
-    it('shows the preview image and creates an object URL', () => {
+    it('escapes file names in the preview markup', () => {
       new DropZone(container);
-      const file = makeFile();
-      const input = container.querySelector('input[type="file"]');
-      Object.defineProperty(input, 'files', { get: () => [file], configurable: true });
-      input.dispatchEvent(new Event('change'));
-      const preview = container.querySelector('.preview-img');
-      expect(preview.hidden).toBe(false);
-      expect(preview.src).toContain('blob:');
-      expect(URL.createObjectURL).toHaveBeenCalledWith(file);
+      select([makeFile('<img src=x onerror=alert(1)>.jpg')]);
+      expect(container.querySelector('.dz-tile img[onerror]')).toBeNull();
+      expect(container.querySelector('.preview-bar-name').textContent).toBe('<img src=x onerror=alert(1)>.jpg');
     });
 
-    it('calls onSelect callback with the file', () => {
+    it('appends later selections to the staged list', () => {
       const dz = new DropZone(container);
-      dz.onSelect = vi.fn();
-      const file = makeFile();
-      const input = container.querySelector('input[type="file"]');
-      Object.defineProperty(input, 'files', { get: () => [file], configurable: true });
-      input.dispatchEvent(new Event('change'));
-      expect(dz.onSelect).toHaveBeenCalledOnce();
-      expect(dz.onSelect).toHaveBeenCalledWith(file);
+      const a = makeFile('a.jpg'), b = makeFile('b.jpg');
+      select([a]);
+      select([b]);
+      expect(dz.files).toEqual([a, b]);
     });
 
-    it('does not call onSelect when no callback is registered', () => {
-      new DropZone(container);
+    it('ignores a file that is already staged', () => {
+      const dz = new DropZone(container);
+      const a = makeFile('a.jpg');
+      select([a]);
+      select([a]);
+      expect(dz.files).toEqual([a]);
+    });
+
+    it('caps the selection at maxFiles and reports how many were skipped', () => {
+      const dz = new DropZone(container, { maxFiles: 3 });
+      dz.onLimit = vi.fn();
+      const files = ['1', '2', '3', '4', '5'].map(n => makeFile(`${n}.jpg`));
+      select(files);
+      expect(dz.files).toEqual(files.slice(0, 3));
+      expect(dz.onLimit).toHaveBeenCalledWith(2);
+      expect(container.querySelector('.drop-zone').classList.contains('is-full')).toBe(true);
+    });
+
+    it('calls onChange with the staged files', () => {
+      const dz = new DropZone(container);
+      dz.onChange = vi.fn();
       const file = makeFile();
-      const input = container.querySelector('input[type="file"]');
-      Object.defineProperty(input, 'files', { get: () => [file], configurable: true });
-      expect(() => input.dispatchEvent(new Event('change'))).not.toThrow();
+      select([file]);
+      expect(dz.onChange).toHaveBeenCalledOnce();
+      expect(dz.onChange).toHaveBeenCalledWith([file]);
+    });
+
+    it('does not throw when no callbacks are registered', () => {
+      new DropZone(container, { maxFiles: 1 });
+      expect(() => select([makeFile('a.jpg'), makeFile('b.jpg')])).not.toThrow();
     });
   });
 
   describe('drop event', () => {
-    it('sets file from dropped data', () => {
+    it('stages dropped files', () => {
       const dz = new DropZone(container);
       const file = makeFile('dropped.png', 'image/png');
-      const root = container.querySelector('.drop-zone');
-      const dropEvent = new Event('drop', { cancelable: true });
-      Object.defineProperty(dropEvent, 'dataTransfer', { value: { files: [file] } });
-      root.dispatchEvent(dropEvent);
-      expect(dz.file).toBe(file);
+      drop([file]);
+      expect(dz.files).toEqual([file]);
     });
 
     it('removes the dragover class on drop', () => {
       new DropZone(container);
       const root = container.querySelector('.drop-zone');
       root.classList.add('dragover');
-      const dropEvent = new Event('drop', { cancelable: true });
-      const file = makeFile();
-      Object.defineProperty(dropEvent, 'dataTransfer', { value: { files: [file] } });
-      root.dispatchEvent(dropEvent);
+      drop([makeFile()]);
       expect(root.classList.contains('dragover')).toBe(false);
     });
   });
@@ -151,28 +181,62 @@ describe('DropZone', () => {
     });
   });
 
-  describe('reset()', () => {
-    it('clears file, preview, and filename after a selection', () => {
-      const dz = new DropZone(container);
-      const file = makeFile();
+  describe('browsing', () => {
+    it('opens the picker while there is room', () => {
+      new DropZone(container, { maxFiles: 2 });
       const input = container.querySelector('input[type="file"]');
-      Object.defineProperty(input, 'files', { get: () => [file], configurable: true });
-      input.dispatchEvent(new Event('change'));
+      input.click = vi.fn();
+      container.querySelector('.drop-zone').click();
+      expect(input.click).toHaveBeenCalledOnce();
+    });
+
+    it('does not open the picker once full', () => {
+      new DropZone(container, { maxFiles: 1 });
+      select([makeFile()]);
+      const input = container.querySelector('input[type="file"]');
+      input.click = vi.fn();
+      container.querySelector('.drop-zone').click();
+      expect(input.click).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('removing files', () => {
+    it('removes a file via its tile button and revokes its preview URL', () => {
+      const dz = new DropZone(container);
+      dz.onChange = vi.fn();
+      const a = makeFile('a.jpg'), b = makeFile('b.jpg');
+      select([a, b]);
+      container.querySelectorAll('.preview-x')[0].click();
+      expect(dz.files).toEqual([b]);
+      expect(URL.revokeObjectURL).toHaveBeenCalledWith(mockObjectUrl);
+      expect(dz.onChange).toHaveBeenLastCalledWith([b]);
+    });
+
+    it('removeFile() ignores files that are not staged', () => {
+      const dz = new DropZone(container);
+      const a = makeFile('a.jpg');
+      select([a]);
+      dz.removeFile(makeFile('other.jpg'));
+      expect(dz.files).toEqual([a]);
+    });
+  });
+
+  describe('reset()', () => {
+    it('clears files and previews after a selection', () => {
+      const dz = new DropZone(container);
+      select([makeFile('a.jpg'), makeFile('b.jpg')]);
 
       dz.reset();
 
-      expect(dz.file).toBeNull();
-      expect(container.querySelector('.preview-img').hidden).toBe(true);
-      expect(container.querySelector('.preview-img').src).toBe('');
-      expect(container.querySelector('.file-name').textContent).toBe('');
+      expect(dz.files).toEqual([]);
+      expect(container.querySelectorAll('.dz-tile')).toHaveLength(0);
+      expect(container.querySelector('.dz-grid').hidden).toBe(true);
+      expect(URL.revokeObjectURL).toHaveBeenCalledTimes(2);
     });
 
     it('restores the drop zone inner visibility', () => {
       const dz = new DropZone(container);
-      const file = makeFile();
-      const input = container.querySelector('input[type="file"]');
-      Object.defineProperty(input, 'files', { get: () => [file], configurable: true });
-      input.dispatchEvent(new Event('change'));
+      select([makeFile()]);
 
       dz.reset();
 

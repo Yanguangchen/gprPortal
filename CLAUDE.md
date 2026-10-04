@@ -63,12 +63,13 @@ storage.rules       – Storage access control rules (UID-based)
 cors.json           – Firebase Storage CORS configuration
 js/
   api.js            – Data layer: Auth (Google), Firestore, Storage, dummy shims
-  utils.js          – esc(), formatDate(), compressImage(), delay()
+  utils.js          – esc(), formatDate(), formatBytes(), compressImage(), delay()
   Modal.js          – Generic promise-based modal class
-  DropZone.js       – Drag-drop / click-to-browse file picker
+  DropZone.js       – Drag-drop / click-to-browse picker for up to 3 images
   ImageCard.js      – Pure function: buildCard(rec, callbacks) → HTMLElement
   Gallery.js        – Filter bar, image grid, lightbox, record state management
-  UploadPanel.js    – Upload form panel; owns a DropZone instance
+  UploadPanel.js    – Upload form panel; owns a DropZone + UploadModal, runs the batch pipeline
+  UploadModal.js    – Processing modal: animated compression stages, log, per-file/overall progress
 ```
 
 ## Architecture & Auth
@@ -94,5 +95,6 @@ When adding or removing an authorized Firestore user:
 - **Auth Required**: All write operations require a valid user session.
 - **Escaping**: All user-supplied strings inserted into `innerHTML` must go through `esc()` from `js/utils.js`.
 - **Error Handling**: `js/api.js` uses `fb_error()` to translate Firebase error codes (like `permission-denied`) into user-friendly messages displayed in UI components.
-- **Image Compression**: `compressImage(file)` resizes + re-encodes as JPEG (max 1920×1080, q=0.82) before upload.
+- **Image Compression**: `compressImage(file)` resizes + re-encodes as JPEG (max 1920×1080, q=0.82) before upload. `UploadPanel` runs it (so `UploadModal` can show the stages); `api.create()` expects an already-compressed file.
+- **Batch Uploads**: Up to 3 scans per upload, sharing one set of metadata. Each `UploadModal` compression stage has a minimum on-screen time (`pace` multiplier; tests pass `pace: 0`). Failed scans stay selected for retry.
 - **Dates**: Stored as ISO strings (`YYYY-MM-DD`); formatted for display via `formatDate()`.

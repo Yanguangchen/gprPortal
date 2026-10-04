@@ -4,7 +4,7 @@
 //  Set USE_FIREBASE = true and fill firebaseConfig to go live.
 //  All four api.* methods work identically in both modes.
 // ─────────────────────────────────────────────────────────────────
-import { delay, compressImage } from './utils.js';
+import { delay } from './utils.js';
 
 export const USE_FIREBASE = true;
 
@@ -87,14 +87,13 @@ async function fb_fetchAll() {
   }
 }
 
+// `file` arrives already compressed — UploadPanel runs compressImage() so it can show progress.
 async function fb_create(file, meta, onProgress) {
   const { addDoc, collection, serverTimestamp, ref, uploadBytesResumable, getDownloadURL } = window._fb;
 
   try {
-    // Compress before upload to keep within Spark plan storage/bandwidth limits
-    const compressed   = await compressImage(file);
-    const storagePath  = `gpr_images/${Date.now()}_${compressed.name}`;
-    const uploadTask  = uploadBytesResumable(ref(storage, storagePath), compressed);
+    const storagePath = `gpr_images/${Date.now()}_${file.name}`;
+    const uploadTask  = uploadBytesResumable(ref(storage, storagePath), file);
 
     await new Promise((resolve, reject) => {
       uploadTask.on('state_changed',
@@ -105,10 +104,10 @@ async function fb_create(file, meta, onProgress) {
 
     const imageUrl = await getDownloadURL(uploadTask.snapshot.ref);
     const docRef   = await addDoc(collection(db, 'gpr_images'), {
-      ...meta, imageUrl, imageName: compressed.name, storagePath, createdAt: serverTimestamp(),
+      ...meta, imageUrl, imageName: file.name, storagePath, createdAt: serverTimestamp(),
     });
 
-    return { id: docRef.id, ...meta, imageUrl, imageName: compressed.name, storagePath };
+    return { id: docRef.id, ...meta, imageUrl, imageName: file.name, storagePath };
   } catch (err) {
     throw fb_error(err);
   }

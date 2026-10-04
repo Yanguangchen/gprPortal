@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { esc, formatDate, delay, compressImage } from './utils.js';
+import { esc, formatDate, formatBytes, delay, compressImage } from './utils.js';
 
 describe('utils.js', () => {
   describe('esc', () => {
@@ -32,6 +32,16 @@ describe('utils.js', () => {
       await delay(50);
       const end = Date.now();
       expect(end - start).toBeGreaterThanOrEqual(40); // with a small buffer for timing variability
+    });
+  });
+
+  describe('formatBytes', () => {
+    it('formats sizes up to 1 MB in KB', () => {
+      expect(formatBytes(2048)).toBe('2 KB');
+    });
+
+    it('formats larger sizes in MB with one decimal', () => {
+      expect(formatBytes(13002342)).toBe('12.4 MB');
     });
   });
 
@@ -130,6 +140,18 @@ describe('utils.js', () => {
       stubImage(0, 0, true); // fail = true triggers onerror
       const input = new File(['fake'], 'broken.jpg', { type: 'image/jpeg' });
       await expect(compressImage(input)).rejects.toThrow('Failed to load image');
+    });
+
+    it('reports source and output dimensions via onDecoded', async () => {
+      stubImage(3840, 2160);
+      const canvas = mockCanvasFor(0, 0);
+      const orig = document.createElement.bind(document);
+      vi.spyOn(document, 'createElement').mockImplementation(tag =>
+        tag === 'canvas' ? canvas : orig(tag)
+      );
+      const onDecoded = vi.fn();
+      await compressImage(new File(['fake'], 'big.jpg', { type: 'image/jpeg' }), { onDecoded });
+      expect(onDecoded).toHaveBeenCalledWith({ width: 3840, height: 2160, outWidth: 1920, outHeight: 1080, quality: 0.82 });
     });
 
     it('revokes the object URL after the image loads', async () => {

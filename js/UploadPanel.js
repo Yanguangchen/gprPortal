@@ -1,8 +1,16 @@
-import { DropZone } from './DropZone.js';
-import { audio }    from './audio.js';
+import { DropZone }      from './DropZone.js';
+import { UploadModal }   from './UploadModal.js';
+import { compressImage } from './utils.js';
+import { audio }         from './audio.js';
+
+const MAX_FILES = 3;
 
 /**
- * Upload panel — drop zone + metadata form.
+ * Upload panel — multi-file drop zone (up to 3 scans) + shared metadata form.
+ *
+ * On submit each scan is compressed (with the UploadModal narrating the
+ * pipeline), then handed to `onUpload` already compressed. The metadata
+ * applies to every scan in the batch.
  *
  * Usage:
  *   new UploadPanel(mountEl, {
@@ -14,10 +22,14 @@ import { audio }    from './audio.js';
  *   });
  *
  * `onUpload` should throw on failure; the panel catches and displays the error.
+ * Options `compress` (default compressImage) and `pace` (modal stage-timing
+ * multiplier, default 1) exist mainly for tests.
  */
 export class UploadPanel {
-  constructor(mountEl, { onUpload }) {
+  constructor(mountEl, { onUpload, compress = compressImage, pace = 1 }) {
     this._onUpload = onUpload;
+    this._compress = compress;
+    this._modal    = new UploadModal({ pace });
 
     mountEl.innerHTML = `
       <section class="glass upload-card">
@@ -25,14 +37,14 @@ export class UploadPanel {
 
           <!-- Left: drop zone -->
           <div class="upload-left">
-            <div class="panel-label"><span class="num">1</span>Radar scan file</div>
+            <div class="panel-label"><span class="num">1</span>Radar scan files</div>
             <div class="js-drop-mount"></div>
             <div class="drop-help">
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <circle cx="12" cy="12" r="9"/>
                 <path d="M12 8h.01M11 12h1v4h1"/>
               </svg>
-              High-resolution exports give the clearest results. Max file size 25&nbsp;MB.
+              Up to ${MAX_FILES} scans per upload — the scan details apply to all of them. Max 25&nbsp;MB each.
             </div>
           </div>
 
@@ -118,10 +130,6 @@ export class UploadPanel {
             </div>
 
             <div class="submit-area">
-              <div class="prog js-prog" hidden>
-                <div class="bar"><div class="fill js-prog-fill"></div></div>
-                <div class="pct js-prog-pct">0%</div>
-              </div>
               <p class="status js-status"></p>
               <button class="btn-primary js-submit" type="button">
                 <svg class="js-submit-ic" viewBox="0 0 24 24" aria-hidden="true">
@@ -145,7 +153,7 @@ export class UploadPanel {
       </section>
     `;
 
-    this._dropZone   = new DropZone(mountEl.querySelector('.js-drop-mount'));
+    this._dropZone   = new DropZone(mountEl.querySelector('.js-drop-mount'), { maxFiles: MAX_FILES });
     this._companyEl  = mountEl.querySelector('#up-company');
     this._projectEl  = mountEl.querySelector('#up-project');
     this._workSiteEl = mountEl.querySelector('#up-work-site');
@@ -157,9 +165,13 @@ export class UploadPanel {
     this._submitText = mountEl.querySelector('.js-submit-text');
     this._spinner    = mountEl.querySelector('.spinner');
     this._statusEl   = mountEl.querySelector('.js-status');
-    this._progEl     = mountEl.querySelector('.js-prog');
-    this._progFill   = mountEl.querySelector('.js-prog-fill');
-    this._progPct    = mountEl.querySelector('.js-prog-pct');
+
+    this._dropZone.onChange = files => {
+      this._updateSubmitLabel(files.length);
+      if (this._statusEl.classList.contains('error')) this._setStatus('');
+    };
+    this._dropZone.onLimit = skipped => this._setStatus(
+      `Up to ${MAX_FILES} scans per upload — ${skipped} file${skipped > 1 ? 's were' : ' was'} skipped.`, 'error');
 
     this._submitBtn.addEventListener('click', () => this._submit());
   }
@@ -167,7 +179,7 @@ export class UploadPanel {
   // ── Private ──────────────────────────────────────────────────────
 
   async _submit() {
-    const file     = this._dropZone.file;
+    const files    = this._dropZone.files;
     const company  = this._companyEl.value.trim();
     const project  = this._projectEl.value.trim();
     const workSite = this._workSiteEl.value.trim();
@@ -175,41 +187,53 @@ export class UploadPanel {
     const referencePointNumber = this._referencePointNumberEl.value.trim();
     const remarks = this._remarksEl.value.trim();
 
-    if (!file)     { this._setStatus('Please select a radar scan file.', 'error'); return; }
+    if (!files.length) { this._setStatus('Please select at least one radar scan file.', 'error'); return; }
     if (!company)  { this._setStatus('Company name is required.', 'error'); this._companyEl.focus(); return; }
     if (!project)  { this._setStatus('Project name is required.', 'error'); this._projectEl.focus(); return; }
     if (!workSite) { this._setStatus('Work site is required.', 'error'); this._workSiteEl.focus(); return; }
     if (!date)     { this._setStatus('Scan date is required.', 'error'); this._dateEl.focus(); return; }
 
+    const meta = { companyName: company, projectName: project, workSite, imageDate: date, referencePointNumber, remarks };
+
     this._setLoading(true);
     this._setStatus('');
-    this._setProgress(0);
-    this._progEl.hidden = false;
+    audio.upload();
+    this._modal.open(files);
 
-    try {
-      await this._onUpload(
-        file,
-        { companyName: company, projectName: project, workSite, imageDate: date, referencePointNumber, remarks },
-        pct => this._setProgress(pct),
-      );
-      this._setProgress(100);
-      await new Promise(r => setTimeout(r, 250));
+    const failures = [];
+    for (const [i, file] of files.entries()) {
+      try {
+        const compressed = await this._modal.compress(i, onDecoded => this._compress(file, { onDecoded }));
+        await this._onUpload(compressed, meta, pct => this._modal.setUploadProgress(i, pct));
+        await this._modal.completeFile(i);
+        this._dropZone.removeFile(file);
+      } catch (err) {
+        this._modal.failFile(i, err.message || 'Upload failed. Check console.');
+        failures.push(err);
+      }
+    }
+
+    const uploaded = files.length - failures.length;
+    if (!failures.length) {
       this._reset();
       audio.success();
-      this._setStatus('Scan uploaded successfully.', 'success');
-      this._showToast();
-    } catch (err) {
+      this._setStatus(uploaded > 1 ? `${uploaded} scans uploaded successfully.` : 'Scan uploaded successfully.', 'success');
+    } else {
       audio.error();
-      this._setStatus(err.message || 'Upload failed. Check console.', 'error');
-    } finally {
-      this._setLoading(false);
-      this._progEl.hidden = true;
-      this._setProgress(0);
+      const reason = failures[0].message || 'Upload failed. Check console.';
+      this._setStatus(uploaded
+        ? `${uploaded} of ${files.length} scans uploaded. ${failures.length} failed (${reason}) and ${failures.length > 1 ? 'remain' : 'remains'} selected for retry.`
+        : reason, 'error');
     }
+    this._setLoading(false);
+
+    await this._modal.finish();
+    if (uploaded) this._showToast(uploaded);
   }
 
   _reset() {
     this._dropZone.reset();
+    this._updateSubmitLabel(0);
     this._companyEl.value  = '';
     this._projectEl.value  = '';
     this._workSiteEl.value = '';
@@ -230,15 +254,15 @@ export class UploadPanel {
     this._statusEl.className   = `status js-status${type ? ' ' + type : ''}`;
   }
 
-  _setProgress(pct) {
-    const v = Math.min(Math.max(pct, 0), 100);
-    this._progFill.style.width = v + '%';
-    this._progPct.textContent  = v + '%';
+  _updateSubmitLabel(count) {
+    this._submitText.textContent = count > 1 ? `Upload ${count} scans` : 'Upload to Portal';
   }
 
-  _showToast() {
+  _showToast(count = 1) {
     const toast = document.getElementById('upload-toast');
     if (!toast) return;
+    const title = toast.querySelector('.toast-title');
+    if (title) title.textContent = count > 1 ? `${count} scans uploaded` : 'Scan uploaded';
     toast.hidden = false;
     toast.classList.add('show');
     setTimeout(() => {
