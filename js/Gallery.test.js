@@ -105,4 +105,22 @@ describe('Gallery', () => {
     expect(meta).toContain('Downtown');
     expect(meta).not.toMatch(/Not specified|None|Ref:/);
   });
+
+  it('reports the total record count for the tab badge', () => {
+    const onCount = vi.fn();
+    const counted = new Gallery(mount, { onCount });
+
+    counted.setRecords(records);
+    expect(onCount).toHaveBeenLastCalledWith(2);
+
+    counted.removeRecord('rec1');
+    expect(onCount).toHaveBeenLastCalledWith(1);
+  });
+
+  it('says when nothing has been uploaded yet', () => {
+    gallery.setRecords([]);
+    const empty = mount.querySelector('.js-empty');
+    expect(empty.hidden).toBe(false);
+    expect(empty.textContent).toBe('No scans uploaded yet.');
+  });
 });

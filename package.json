@@ -8,7 +8,7 @@
     "start": "node server.cjs",
     "dev": "node server.cjs",
     "serve": "node server.cjs",
-    "check": "node --check app.js && node --check js/api.js && node --check js/DropZone.js && node --check js/Gallery.js && node --check js/ImageCard.js && node --check js/Modal.js && node --check js/UploadPanel.js && node --check js/UploadModal.js && node --check js/utils.js && node --check server.cjs",
+    "check": "node --check app.js && node --check js/api.js && node --check js/DropZone.js && node --check js/Gallery.js && node --check js/ImageCard.js && node --check js/Modal.js && node --check js/Tabs.js && node --check js/UploadPanel.js && node --check js/UploadModal.js && node --check js/utils.js && node --check server.cjs",
     "lint": "eslint .",
     "test": "vitest run --coverage"
   },

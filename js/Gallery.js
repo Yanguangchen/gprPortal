@@ -6,27 +6,23 @@ import { audio }           from './audio.js';
  * Gallery — manages filter bar, image grid, and lightbox.
  *
  * Usage:
- *   const gallery = new Gallery(mountEl, { onEdit, onDelete });
+ *   const gallery = new Gallery(mountEl, { onEdit, onDelete, onCount });
  *   gallery.setRecords(records);   // initial load
  *   gallery.addRecord(rec);        // after upload
  *   gallery.updateRecord(id, fields); // after edit
  *   gallery.removeRecord(id);      // after delete
  */
 export class Gallery {
-  constructor(mountEl, { onEdit, onDelete } = {}) {
+  constructor(mountEl, { onEdit, onDelete, onCount } = {}) {
     this._records  = [];
     this._seen     = new Set(); // ids already rendered once — only new cards animate in
     this._onEdit   = onEdit;
     this._onDelete = onDelete;
+    this._onCount  = onCount; // called with the total record count on every render
 
     // ── Filter bar + grid shell ──────────────────────────────────
     mountEl.innerHTML = `
-      <section class="surface filter-section reveal" style="--i:3">
-        <div class="section-head">
-          <h2 class="section-title">Gallery</h2>
-          <p class="gallery-count js-count"></p>
-          <button class="link-btn js-f-clear" type="button" hidden>Clear filters</button>
-        </div>
+      <section class="surface filter-section reveal" style="--i:2" aria-label="Search and filters">
         <div class="filter-bar">
           <div class="filter-item">
             <label>Company</label>
@@ -50,6 +46,11 @@ export class Gallery {
           </div>
         </div>
       </section>
+
+      <div class="results-bar">
+        <p class="gallery-count js-count" aria-live="polite"></p>
+        <button class="link-btn js-f-clear" type="button" hidden>Clear filters</button>
+      </div>
 
       <section class="gallery-section">
         <div class="gallery-grid js-grid"></div>
@@ -113,7 +114,7 @@ export class Gallery {
   // ── Public record management ─────────────────────────────────────
 
   setRecords(records) {
-    this._records = records;
+    this._records = [...records]; // own copy: add/remove must not mutate the caller's array
     this._rebuildDropdowns();
     this._render();
   }
@@ -165,6 +166,10 @@ export class Gallery {
     this._clearBtn.hidden = !this._hasFilters();
     this._grid.innerHTML = '';
     this._emptyEl.hidden = filtered.length > 0;
+    this._emptyEl.textContent = this._records.length
+      ? 'No images match the current filters.'
+      : 'No scans uploaded yet.';
+    this._onCount?.(this._records.length);
 
     let fresh = 0;
     filtered.forEach(rec => {

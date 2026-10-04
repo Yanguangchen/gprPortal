@@ -53,7 +53,7 @@ To connect to a live Firebase project:
 ## File Structure
 
 ```
-index.html          – Shell: sticky top bar (brand + user-profile) + upload-mount + gallery-mount
+index.html          – Shell: top bar (brand + Upload/Gallery tabs + user-profile) + two swipeable screens
 style.css           – Clean minimal UI: design tokens (light + OS dark mode), load-in/hover animations
 app.js              – Orchestrator: wires api → components, handles Auth flow
 manifest.json       – PWA manifest (standalone fullscreen, theme #f6f7f9)
@@ -65,6 +65,7 @@ js/
   api.js            – Data layer: Auth (Google), Firestore, Storage, dummy shims
   utils.js          – esc(), formatDate(), formatBytes(), compressImage(), delay()
   Modal.js          – Generic promise-based modal class
+  Tabs.js           – Upload/Gallery tabs over a swipeable scroll-snap track (click, keys, swipe, #hash)
   DropZone.js       – Drag-drop / click-to-browse picker for up to 3 images
   ImageCard.js      – Pure function: buildCard(rec, callbacks) → HTMLElement
   Gallery.js        – Filter bar, image grid, lightbox, record state management
@@ -80,7 +81,8 @@ js/
 - **Modals**: `Modal.open()` returns a Promise. The login modal is handled separately in `app.js` with a custom body and button wiring.
 - **Styling**: One clean theme driven by CSS custom properties on `:root`; dark mode follows `prefers-color-scheme` (there is no theme switcher). Sections fade/rise in on load via `.reveal` + `--i` (stagger index); gallery cards animate only the first time they render (`is-new`). All motion is disabled under `prefers-reduced-motion`.
 - **UI sounds**: Off by default (`SOUNDS_ON` in `js/audio.js`); there is no on/off toggle in the UI.
-- **Responsive**: Upload card stacks below 900px; form, filters and gallery go single-column below 560px.
+- **Screens & tabs**: Upload and Gallery are separate full-height screens in `main.screens`, a horizontal `scroll-snap` track; each screen scrolls vertically on its own and the body never scrolls. `js/Tabs.js` switches screens on tab click, arrow keys or a left/right swipe/flick, moves the tab pill with the scroll position (`--p`), marks off-screen screens `inert`, mirrors the active tab in the URL hash (`#upload` / `#gallery`), and shows the Gallery record count as a tab badge.
+- **Responsive**: Tabs move to their own row below 640px; upload card stacks below 900px; form, filters and gallery go single-column below 560px.
 
 ## Firestore Access Control
 
