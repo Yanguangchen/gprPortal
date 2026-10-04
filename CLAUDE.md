@@ -53,10 +53,10 @@ To connect to a live Firebase project:
 ## File Structure
 
 ```
-index.html          – Shell: header + user-profile + upload-mount + gallery-mount
-style.css           – Glassmorphism cards, responsive grid, theme system, auth UI
+index.html          – Shell: sticky top bar (brand + user-profile) + upload-mount + gallery-mount
+style.css           – Clean minimal UI: design tokens (light + OS dark mode), load-in/hover animations
 app.js              – Orchestrator: wires api → components, handles Auth flow
-manifest.json       – PWA manifest (standalone fullscreen, theme #060a12)
+manifest.json       – PWA manifest (standalone fullscreen, theme #f6f7f9)
 vercel.json         – Vercel deployment config for static files
 firestore.rules     – Firestore access control rules (UID allowlist from allowedUsers.md)
 storage.rules       – Storage access control rules (UID-based)
@@ -74,11 +74,13 @@ js/
 
 ## Architecture & Auth
 
-- **Authentication**: Powered by Firebase Google Auth. The app listens for auth changes in `app.js` and renders the `#user-profile` card accordingly.
+- **Authentication**: Powered by Firebase Google Auth. The app listens for auth changes in `app.js` and renders the `#user-profile` area (Sign in button, or avatar + name + Sign out) accordingly.
 - **Security**: Firestore access is restricted to the authenticated Firebase UIDs listed in `allowedUsers.md` and mirrored in `firestore.rules`. Storage access is controlled separately in `storage.rules`.
 - **Data Flow**: `js/api.js` routes all calls through either Firebase or local dummy shims. Dummy mode includes a persistent session state for the demo user.
 - **Modals**: `Modal.open()` returns a Promise. The login modal is handled separately in `app.js` with a custom body and button wiring.
-- **Responsive**: The `#user-profile` card and all main sections stack vertically on mobile (max-width 780px).
+- **Styling**: One clean theme driven by CSS custom properties on `:root`; dark mode follows `prefers-color-scheme` (there is no theme switcher). Sections fade/rise in on load via `.reveal` + `--i` (stagger index); gallery cards animate only the first time they render (`is-new`). All motion is disabled under `prefers-reduced-motion`.
+- **UI sounds**: Off by default (`SOUNDS_ON` in `js/audio.js`); there is no on/off toggle in the UI.
+- **Responsive**: Upload card stacks below 900px; form, filters and gallery go single-column below 560px.
 
 ## Firestore Access Control
 

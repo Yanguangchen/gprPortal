@@ -67,7 +67,7 @@ describe('UploadPanel', () => {
 
     expect(referenceInput).not.toBeNull();
     expect(referenceInput.type).toBe('text');
-    expect(mount.querySelector('label[for="up-reference-point-number"]').textContent).toContain('Reference Point Number');
+    expect(mount.querySelector('label[for="up-reference-point-number"]').textContent).toContain('Reference point number');
     expect(mount.querySelector('label[for="up-reference-point-number"]').textContent).not.toContain('*');
 
     expect(remarksInput).not.toBeNull();

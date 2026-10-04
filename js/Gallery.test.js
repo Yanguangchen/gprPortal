@@ -69,4 +69,40 @@ describe('Gallery', () => {
     expect(meta).toContain('RP-12A');
     expect(meta).toContain('Near column B2');
   });
+
+  it('only shows "Clear filters" while a filter is active', () => {
+    gallery.setRecords(records);
+    const clear = mount.querySelector('.js-f-clear');
+    expect(clear.hidden).toBe(true);
+
+    const search = mount.querySelector('.js-f-search');
+    search.value = 'acme';
+    search.dispatchEvent(new Event('input'));
+    expect(clear.hidden).toBe(false);
+
+    clear.click();
+    expect(search.value).toBe('');
+    expect(clear.hidden).toBe(true);
+  });
+
+  it('animates cards in only the first time they are shown', () => {
+    gallery.setRecords(records);
+    const first = [...mount.querySelectorAll('.image-card')];
+    expect(first.every(c => c.classList.contains('is-new'))).toBe(true);
+    expect(first.map(c => c.style.getPropertyValue('--i'))).toEqual(['0', '1']);
+
+    gallery.addRecord({ ...records[0], id: 'rec3' });
+    const cards = [...mount.querySelectorAll('.image-card')];
+    expect(cards.filter(c => c.classList.contains('is-new')).map(c => c.dataset.id)).toEqual(['rec3']);
+  });
+
+  it('leaves empty optional fields out of the lightbox', () => {
+    gallery.setRecords([{ ...records[0], referencePointNumber: '', remarks: '' }]);
+
+    mount.querySelector('.card-img-wrap').click();
+
+    const meta = document.querySelector('.js-lb-meta').textContent;
+    expect(meta).toContain('Downtown');
+    expect(meta).not.toMatch(/Not specified|None|Ref:/);
+  });
 });

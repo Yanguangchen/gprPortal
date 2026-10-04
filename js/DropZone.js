@@ -22,12 +22,6 @@ export class DropZone {
 
     container.innerHTML = `
       <div class="drop-zone" tabindex="0" role="button" aria-label="Click or drag to add up to ${maxFiles} images">
-        <div class="sweep" aria-hidden="true"></div>
-        <svg class="rings" width="240" height="240" viewBox="0 0 300 300" aria-hidden="true">
-          <circle cx="150" cy="150" r="60"/>
-          <circle cx="150" cy="150" r="100"/>
-          <circle cx="150" cy="150" r="140"/>
-        </svg>
         <input type="file" accept="image/*" multiple hidden />
         <div class="drop-zone-inner">
           <span class="drop-ic">
@@ -39,11 +33,8 @@ export class DropZone {
                     stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
             </svg>
           </span>
-          <span class="drop-title">Drag &amp; drop up to ${maxFiles} scans here</span>
+          <span class="drop-title">Drop up to ${maxFiles} scans here</span>
           <span class="drop-sub">or <button class="link-btn" type="button">browse files</button></span>
-          <span class="drop-formats">
-            <span class="chip">PNG</span><span class="chip">JPG</span><span class="chip">TIFF</span>
-          </span>
         </div>
         <div class="dz-grid" hidden></div>
         <div class="dz-count" hidden></div>

@@ -19,7 +19,7 @@ A construction engineering company uploads Ground Penetrating Radar scan images 
 
 | Area              | Status                                                                           |
 |-------------------|----------------------------------------------------------------------------------|
-| UI / layout       | Complete — glassmorphic, responsive cards, sci-fi theme system                   |
+| UI / layout       | Complete — clean minimal UI, light + OS dark mode, load-in and hover animations |
 | Auth              | **Live** — Google Sign-in implemented with dedicated User Profile card           |
 | Security          | **Active** — Firestore rules use an authorized UID allowlist; Storage rules are UID-based |
 | Firebase wiring   | **Live** — USE_FIREBASE = true, real config in js/api.js                         |
@@ -45,7 +45,7 @@ A construction engineering company uploads Ground Penetrating Radar scan images 
 ## Key Decisions
 
 ### Firebase Authentication (V2)
-Implemented Google Sign-in to replace the "trusted network" assumption of V1. The app now requires authentication to access any CRUD features. A dedicated `#user-profile` card at the top of the app provides status and login/logout actions.
+Implemented Google Sign-in to replace the "trusted network" assumption of V1. The app now requires authentication to access any CRUD features. The `#user-profile` area in the top bar provides status and login/logout actions.
 
 ### UID-Based Security Rules
 Access is restricted at the database and storage level via rules that check `request.auth.uid`. Firestore allows the authenticated UIDs documented in `allowedUsers.md` to read and write all documents through the allowlist in `firestore.rules`. Storage access is controlled separately in `storage.rules`.
@@ -65,10 +65,9 @@ Firebase Storage CORS policy must be manually set via `gsutil` or Google Cloud S
 
 | File                  | Responsibility                                                |
 |-----------------------|---------------------------------------------------------------|
-| `app.js`              | Orchestrator: Init theme, handles Auth flow, wires components |
+| `app.js`              | Orchestrator: handles Auth flow, wires components             |
 | `js/api.js`           | Data Layer: Auth, CRUD, dummy shims, error mapping            |
 | `js/utils.js`         | Utilities: `esc()`, `formatDate()`, `formatBytes()`, `compressImage()` |
-| `js/theme.js`         | Theme persistence, `initTheme()`, `renderThemeSwitcher()`     |
 | `js/Modal.js`         | Generic promise-based modal (form or confirm)                 |
 | `js/DropZone.js`      | Drag-drop / browse picker for up to 3 images                  |
 | `js/ImageCard.js`     | UI Function: record → card DOM element                        |

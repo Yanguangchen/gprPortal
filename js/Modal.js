@@ -31,6 +31,7 @@ import { audio } from './audio.js';
  * @param {string}   [options.confirmLabel]    Default: 'Confirm'
  * @param {string}   [options.confirmVariant]  'primary' | 'danger'. Default: 'primary'
  * @param {string}   [options.size]            'md' | 'sm'. Default: 'md'
+ * @param {boolean}  [options.actions]         Show the Cancel/Confirm row. Default: true
  */
 export class Modal {
   constructor({
@@ -40,6 +41,7 @@ export class Modal {
     confirmLabel = 'Confirm',
     confirmVariant = 'primary',
     size = 'md',
+    actions = true,
   }) {
     this._fields  = fields;
     this._resolve = null;
@@ -49,11 +51,11 @@ export class Modal {
     el.hidden = true;
     el.innerHTML = `
       <div class="modal-backdrop"></div>
-      <div class="glass modal-box${size === 'sm' ? ' modal-box--sm' : ''}">
+      <div class="surface modal-box${size === 'sm' ? ' modal-box--sm' : ''}" role="dialog" aria-modal="true" aria-label="${esc(title)}">
         <h3 class="modal-title">${esc(title)}</h3>
         ${bodyHTML}
         <div class="modal-fields"></div>
-        <div class="modal-actions">
+        <div class="modal-actions"${actions ? '' : ' hidden'}>
           <button class="btn-ghost modal-cancel" type="button">Cancel</button>
           <button class="btn-${esc(confirmVariant)} modal-confirm" type="button">
             <span class="modal-confirm-text">${esc(confirmLabel)}</span>

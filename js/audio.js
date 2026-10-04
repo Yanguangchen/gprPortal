@@ -4,8 +4,13 @@
  */
 
 const STORAGE = 'gpr-audio-enabled';
+
+// UI sounds are off: the on/off toggle was removed from the header.
+// Set to true to bring them back (the saved preference is still respected).
+const SOUNDS_ON = false;
+
 let audioContext = null;
-let enabled = localStorage.getItem(STORAGE) !== 'false';
+let enabled = SOUNDS_ON && localStorage.getItem(STORAGE) !== 'false';
 
 function getContext() {
   if (!audioContext) {
@@ -57,7 +62,6 @@ export const audio = {
   setEnabled: (v) => {
     enabled = v;
     localStorage.setItem(STORAGE, v);
-    updateToggleUI();
   },
 
   click: () => playTone({ type: 'sine', freq: 800, duration: 0.05, volume: 0.05 }),
@@ -78,46 +82,12 @@ export const audio = {
   }
 };
 
-let _toggleContainer = null;
-
-function updateToggleUI() {
-  if (!_toggleContainer) return;
-  const btn = _toggleContainer.querySelector('.audio-toggle-btn');
-  if (btn) {
-    btn.classList.toggle('active', enabled);
-    btn.querySelector('.audio-toggle-icon').textContent = enabled ? '🔊' : '🔇';
-    btn.querySelector('.audio-toggle-text').textContent = enabled ? 'Audio On' : 'Audio Off';
-  }
-}
-
-/**
- * Renders the audio toggle into containerEl and attaches click handling.
- */
-export function renderAudioToggle(containerEl) {
-  _toggleContainer = containerEl;
-  containerEl.innerHTML = `
-    <div class="audio-toggle">
-      <button class="btn-ghost btn-sm audio-toggle-btn${enabled ? ' active' : ''}" type="button">
-        <span class="audio-toggle-icon">${enabled ? '🔊' : '🔇'}</span>
-        <span class="audio-toggle-text">${enabled ? 'Audio On' : 'Audio Off'}</span>
-      </button>
-    </div>
-  `;
-
-  containerEl.addEventListener('click', e => {
-    if (e.target.closest('.audio-toggle-btn')) {
-      audio.setEnabled(!enabled);
-      if (enabled) audio.click();
-    }
-  });
-}
-
 /**
  * Initialize global click listener.
  */
 export function initAudioFeedback() {
   window.addEventListener('click', (e) => {
-    const target = e.target.closest('button, a, input[type="submit"], .ts-btn, .image-card');
+    const target = e.target.closest('button, a, input[type="submit"], .image-card');
     if (target) {
       audio.click();
     }

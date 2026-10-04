@@ -56,7 +56,7 @@ export class UploadModal {
     el.hidden = true;
     el.innerHTML = `
       <div class="modal-backdrop"></div>
-      <div class="glass modal-box up-box" role="dialog" aria-modal="true"
+      <div class="surface modal-box up-box" role="dialog" aria-modal="true"
            aria-labelledby="up-modal-title" tabindex="-1">
 
         <header class="up-head">

@@ -15,37 +15,40 @@ import { audio }           from './audio.js';
 export class Gallery {
   constructor(mountEl, { onEdit, onDelete } = {}) {
     this._records  = [];
+    this._seen     = new Set(); // ids already rendered once — only new cards animate in
     this._onEdit   = onEdit;
     this._onDelete = onDelete;
 
     // ── Filter bar + grid shell ──────────────────────────────────
     mountEl.innerHTML = `
-      <section class="glass filter-section">
-        <h2 class="section-title">Image Gallery</h2>
+      <section class="surface filter-section reveal" style="--i:3">
+        <div class="section-head">
+          <h2 class="section-title">Gallery</h2>
+          <p class="gallery-count js-count"></p>
+          <button class="link-btn js-f-clear" type="button" hidden>Clear filters</button>
+        </div>
         <div class="filter-bar">
           <div class="filter-item">
             <label>Company</label>
-            <select class="js-f-company"><option value="">All Companies</option></select>
+            <select class="js-f-company"><option value="">All companies</option></select>
           </div>
           <div class="filter-item">
             <label>Project</label>
-            <select class="js-f-project"><option value="">All Projects</option></select>
+            <select class="js-f-project"><option value="">All projects</option></select>
           </div>
           <div class="filter-item">
-            <label>Date From</label>
+            <label>Date from</label>
             <input type="date" class="js-f-from" />
           </div>
           <div class="filter-item">
-            <label>Date To</label>
+            <label>Date to</label>
             <input type="date" class="js-f-to" />
           </div>
           <div class="filter-item filter-search">
             <label>Search</label>
             <input type="text" class="js-f-search" placeholder="Company, project, ref, remarks…" />
           </div>
-          <button class="btn-ghost js-f-clear" type="button">Clear</button>
         </div>
-        <p class="gallery-count js-count"></p>
       </section>
 
       <section class="gallery-section">
@@ -90,7 +93,9 @@ export class Gallery {
     this._lb.innerHTML = `
       <div class="lightbox-backdrop"></div>
       <div class="lightbox-content">
-        <button class="lightbox-close" type="button" aria-label="Close">✕</button>
+        <button class="lightbox-close" type="button" aria-label="Close">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
         <img class="js-lb-img" src="" alt="Full size GPR image" />
         <div class="js-lb-meta lightbox-meta"></div>
       </div>
@@ -156,18 +161,30 @@ export class Gallery {
 
   _render() {
     const filtered = this._filter();
-    this._countEl.textContent = `${filtered.length} image${filtered.length !== 1 ? 's' : ''} shown`;
+    this._countEl.textContent = `${filtered.length} image${filtered.length !== 1 ? 's' : ''}`;
+    this._clearBtn.hidden = !this._hasFilters();
     this._grid.innerHTML = '';
     this._emptyEl.hidden = filtered.length > 0;
 
+    let fresh = 0;
     filtered.forEach(rec => {
       const card = buildCard(rec, {
         onView:   r => this._openLightbox(r),
         onEdit:   r => this._onEdit?.(r),
         onDelete: r => this._onDelete?.(r),
       });
+      if (!this._seen.has(rec.id)) {
+        this._seen.add(rec.id);
+        card.classList.add('is-new');
+        card.style.setProperty('--i', fresh++);
+      }
       this._grid.appendChild(card);
     });
+  }
+
+  _hasFilters() {
+    return [this._fCompany, this._fProject, this._fFrom, this._fTo, this._fSearch]
+      .some(el => el.value.trim() !== '');
   }
 
   _rebuildDropdowns() {
@@ -176,9 +193,9 @@ export class Gallery {
     const prevCo    = this._fCompany.value;
     const prevPr    = this._fProject.value;
 
-    this._fCompany.innerHTML = '<option value="">All Companies</option>' +
+    this._fCompany.innerHTML = '<option value="">All companies</option>' +
       companies.map(c => `<option value="${esc(c.toLowerCase())}">${esc(c)}</option>`).join('');
-    this._fProject.innerHTML = '<option value="">All Projects</option>' +
+    this._fProject.innerHTML = '<option value="">All projects</option>' +
       projects.map(p => `<option value="${esc(p.toLowerCase())}">${esc(p)}</option>`).join('');
 
     this._fCompany.value = prevCo;
@@ -188,12 +205,16 @@ export class Gallery {
   _openLightbox(rec) {
     audio.action();
     this._lb.querySelector('.js-lb-img').src = rec.imageUrl;
-    this._lb.querySelector('.js-lb-meta').innerHTML =
-      `<strong>${esc(rec.companyName)}</strong> · ${esc(rec.projectName)}<br/>` +
-      `${esc(rec.workSite || 'No work site specified')}<br/>` +
-      `Reference Point Number: ${esc(rec.referencePointNumber || 'Not specified')}<br/>` +
-      `Remarks: ${esc(rec.remarks || 'None')}<br/>` +
-      formatDate(rec.imageDate, { dateStyle: 'long' });
+    const rows = [
+      rec.workSite,
+      rec.referencePointNumber && `Ref: ${rec.referencePointNumber}`,
+      rec.remarks,
+    ].filter(Boolean);
+    this._lb.querySelector('.js-lb-meta').innerHTML = `
+      <div class="lb-title"><strong>${esc(rec.projectName)}</strong> <span>${esc(rec.companyName)}</span></div>
+      ${rows.map(r => `<div class="lb-row">${esc(r)}</div>`).join('')}
+      <div class="lb-date">${esc(formatDate(rec.imageDate, { dateStyle: 'long' }))}</div>
+    `;
     this._lb.hidden = false;
     document.body.style.overflow = 'hidden';
   }
