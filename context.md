@@ -69,6 +69,7 @@ Firebase Storage CORS policy must be manually set via `gsutil` or Google Cloud S
 | `js/api.js`           | Data Layer: Auth, CRUD, dummy shims, error mapping            |
 | `js/utils.js`         | Utilities: `esc()`, `formatDate()`, `formatBytes()`, `compressImage()` |
 | `js/Modal.js`         | Generic promise-based modal (form or confirm)                 |
+| `js/Tabs.js`          | Upload/Gallery tabs; swipeable scroll-snap screens            |
 | `js/DropZone.js`      | Drag-drop / browse picker for up to 3 images                  |
 | `js/ImageCard.js`     | UI Function: record → card DOM element                        |
 | `js/Gallery.js`       | UI Component: Filter bar, image grid, lightbox                |

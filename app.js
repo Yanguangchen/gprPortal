@@ -8,6 +8,7 @@ import { api, initFirebase, USE_FIREBASE } from './js/api.js';
 import { Gallery }     from './js/Gallery.js';
 import { UploadPanel } from './js/UploadPanel.js';
 import { Modal }       from './js/Modal.js';
+import { Tabs }        from './js/Tabs.js';
 import { esc }         from './js/utils.js';
 import { audio, initAudioFeedback } from './js/audio.js';
 
@@ -15,6 +16,9 @@ initAudioFeedback();
 
 
 async function boot() {
+  // Upload / Gallery screens: tab clicks or a left/right swipe switch between them
+  const tabs = new Tabs(document.querySelector('.tabs'), document.getElementById('screens'));
+
   if (USE_FIREBASE) await initFirebase();
 
 
@@ -126,6 +130,7 @@ async function boot() {
 
   // ── Gallery ────────────────────────────────────────────────────
   const gallery = new Gallery(document.getElementById('gallery-mount'), {
+    onCount: n => tabs.setBadge('gallery', n),
 
     onEdit: async rec => {
       const values = await editModal.open({
